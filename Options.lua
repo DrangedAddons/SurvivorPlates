@@ -145,7 +145,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(500)
+    frame:SetHeight(530)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -197,6 +197,7 @@ local function Build()
     Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -372)
     Check(frame, "targetHighlight", "Gold border on the target", L, -404)
     Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -428)
+    Check(frame, "minimapButton", "Show minimap button", L, -460)
     Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, R, -372)
     Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, R, -412)
 
@@ -233,6 +234,9 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
     if msg == "reset" then
         SP.Reset()
         SP.Print("settings reset to defaults.")
+    elseif msg == "minimap" then
+        SP.Set("minimapButton", not SP.Get("minimapButton"))
+        SP.Print("minimap button " .. (SP.Get("minimapButton") and "shown." or "hidden. /asp minimap brings it back."))
     elseif msg == "status" then
         local shown, all = SP.PlateCount()
         SP.Print("v" .. SP.version .. ", " .. (SP.IsInstalled() and "hooked into SurvivorsDragonUi" or "NOT hooked")

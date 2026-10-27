@@ -30,7 +30,11 @@ SP.defaults = {
     fadeOthers = false,
     otherAlpha = 0.6,
     bossScale = 1.3,
+    -- Minimap button (Reset to defaults leaves these alone)
+    minimapButton = true,
+    minimapAngle = 225, -- degrees around the minimap, 0 = right
 }
+local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true }
 
 local CHOICES = {
     stackMode = { "stack", "overlap" },
@@ -82,8 +86,13 @@ function SP.Set(key, value)
     SP.RestyleAll()
 end
 
+-- Saves without restyling every plate, for values nothing on a plate depends on.
+function SP.SetQuiet(key, value) db[key] = value end
+
 function SP.Reset()
-    for k, v in pairs(SP.defaults) do db[k] = v end
+    for k, v in pairs(SP.defaults) do
+        if not KEEP_ON_RESET[k] then db[k] = v end
+    end
     SP.RestyleAll()
 end
 
@@ -232,6 +241,7 @@ function SP.RestyleAll()
         if data.style and data.style.sp then data.style.sp.layoutDone = false end
         data.spAnchored = false -- re-apply the anchor and click area too
     end
+    if SP.UpdateMinimapButton then SP.UpdateMinimapButton() end
     if SP.RefreshOptions then SP.RefreshOptions() end
 end
 
@@ -382,6 +392,7 @@ events:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == "SurvivorPlates" then
         LoadSettings()
         Install()
+        SP.UpdateMinimapButton()
     elseif event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
         if not db then LoadSettings() end
         if not Install() and not warned then

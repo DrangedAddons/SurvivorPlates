@@ -2,7 +2,7 @@
 
 An [Azeroth Survivors](https://discord.gg/azerothsurvivors) addon. It's a companion to **SurvivorsDragonUi** that adds the nameplate settings you'd expect from a WoW nameplate addon: stacking, size, and target highlighting.
 
-Type `/asp` in game to open the settings. Every change shows at once.
+Click the minimap button or type `/asp` in game to open the settings. Every change shows at once.
 
 ## Settings
 
@@ -21,6 +21,7 @@ Settings are per character.
 ## Commands
 - `/asp`: open or close the settings
 - `/asp reset`: back to defaults
+- `/asp minimap`: show or hide the minimap button
 - `/asp status`: whether it's hooked into SurvivorsDragonUi, and how many plates it sees
 
 ## Requirements
