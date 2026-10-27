@@ -2,7 +2,7 @@
 -- SurvivorsDragonUi draws each enemy plate as a skin frame (data.style.visual) centred
 -- on the native plate's health bar. The game positions the native plates, and already
 -- spreads them so their 32 px frames never overlap ("Spread"). This addon resizes the skin
--- and, in Stack mode, moves skins that overlap sideways into tidy columns.
+-- and, in Collapse mode, shows one plate per pile of mobs with a count.
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
@@ -10,16 +10,9 @@ SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") 
 
 SP.defaults = {
     -- Stacking
-    stackMode = "spread", -- "spread" (the game's own layout), "stack" (columns) or "collapse" (one plate per pile)
-    stackGap = 2,
-    stackOverlap = 30, -- % of the narrower plate's width two plates must share to join a column
-    stackKeep = true, -- a plate that joins a column stays in it until its plate goes away
-    stackLeave = 2, -- plate widths sideways (x6 plate rows up/down) before a plate leaves its column
-    stackMax = 10, -- most plates in one column; the rest start a new one
-    stackSpeed = 12, -- 0 = jump straight to place
-    clampTop = true,
+    stackMode = "spread", -- "spread" (the game's own layout) or "collapse" (one plate per pile)
+    stackOverlap = 30, -- lower lets a pile pick up same-mob plates from further to the side
     combatOnly = false,
-    moveClicks = true, -- move the plate's click area along with its stacked skin
     -- Size
     width = 100,
     height = 10,
@@ -40,7 +33,7 @@ SP.defaults = {
 local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true }
 
 local CHOICES = {
-    stackMode = { "spread", "stack", "collapse" },
+    stackMode = { "spread", "collapse" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
@@ -48,8 +41,6 @@ SP.choices = CHOICES
 
 local db -- this character's settings
 local plates = {} -- plate -> data (SurvivorsDragonUi's per-plate table)
--- Skin offsets from the game's position, in screen pixels: current and wanted.
-local offX, offY, wantX, wantY = {}, {}, {}, {}
 -- Collapse mode: plates hidden inside a pile, and the pile size shown on its visible plate.
 local pileHidden, pileCount = {}, {}
 local installed, warned = false, false
@@ -88,12 +79,6 @@ function SP.Get(key) return db[key] end
 
 function SP.Set(key, value)
     db[key] = value
-    -- A mode change snaps every plate to its new place instead of gliding there.
-    if key == "stackMode" then
-        for _, t in ipairs({ offX, offY, wantX, wantY }) do
-            for k in pairs(t) do t[k] = nil end
-        end
-    end
     SP.RestyleAll()
 end
 
@@ -259,47 +244,14 @@ end
 function SP.RestyleAll()
     for plate, data in pairs(plates) do
         if data.style and data.style.sp then data.style.sp.layoutDone = false end
-        data.spAnchored = false -- re-apply the anchor and click area too
     end
     if SP.UpdateMinimapButton then SP.UpdateMinimapButton() end
     if SP.RefreshOptions then SP.RefreshOptions() end
 end
 
--- Stacking ---------------------------------------------------------------------------
+-- Collapsing ---------------------------------------------------------------------------
 
-local function Anchor(plate, data, dx, dy)
-    local style = data.style
-    local eff = style.visual:GetEffectiveScale()
-    style.visual:ClearAllPoints()
-    style.visual:SetPoint("CENTER", data.bar, "CENTER", dx / eff, dy / eff)
-    -- Move the click area with the skin, so clicking a stacked plate targets its mob.
-    -- SurvivorsDragonUi's hidden-plate mode sets its own insets, so stay out of its way then.
-    if db.moveClicks and not data.presentationMasked then
-        local ps = plate:GetEffectiveScale()
-        local ix, iy = dx / ps, dy / ps
-        if data.spInsetX ~= ix or data.spInsetY ~= iy then
-            plate:SetHitRectInsets(ix, -ix, -iy, iy)
-            data.spInsetX, data.spInsetY = ix, iy
-        end
-    elseif (data.spInsetX or 0) ~= 0 or (data.spInsetY or 0) ~= 0 then
-        if not data.presentationMasked then
-            plate:SetHitRectInsets(0, 0, 0, 0)
-            data.spInsetX, data.spInsetY = 0, 0
-        end
-    end
-end
-
--- Stack mode. Columns are remembered between passes, so they don't reshuffle every time
--- the game nudges a plate:
---  * Joining is easy: a free plate joins a column if it overlaps it sideways by at least
---    `stackOverlap` % and sits within reach of the column's top plate.
---  * Leaving is very hard: a member stays for at least STICK_TIME after joining, and after
---    that until its mob is far away: more than `stackLeave` plate widths sideways from the
---    column, or more than ROWS_PER_WIDTH times that in the game's plate rows from the plate
---    below it.
---  * Members keep their order, so a column never reorders itself; new plates go on top.
-local STICK_TIME, ROWS_PER_WIDTH = 3.0, 6
-local live, byPlate, order, joinedAt, memberName = {}, {}, {}, {}, {}
+local live, byPlate, order, memberName = {}, {}, {}, {}
 
 -- Collapse mode. Mobs in this game never unpile once they've piled up, so piles are built
 -- to grab plates easily and practically never let go:
@@ -429,17 +381,15 @@ local function ComputePiles(n, share)
 end
 
 local lastMode
-local function ComputeStack()
-    for _, t in ipairs({ wantX, wantY, pileHidden, pileCount }) do
+local function ComputeCollapse()
+    for _, t in ipairs({ pileHidden, pileCount }) do
         for k in pairs(t) do t[k] = nil end
     end
-    -- Columns and piles share `order`, so a mode change starts it afresh.
     if lastMode ~= db.stackMode then
         for k in pairs(order) do order[k] = nil end
         lastMode = db.stackMode
     end
-    local stacking = db.stackMode ~= "spread" and (not db.combatOnly or UnitAffectingCombat("player"))
-    if not stacking then
+    if db.stackMode ~= "collapse" or (db.combatOnly and not UnitAffectingCombat("player")) then
         for k in pairs(order) do order[k] = nil end
         return
     end
@@ -463,10 +413,8 @@ local function ComputeStack()
                 local e = live[n] or {}
                 live[n] = e
                 e.plate, e.x, e.y, e.w, e.h = plate, x * bs, y * bs, db.width * eff, h
-                -- The game spreads its plate frames a frame's height apart, so a plate one
-                -- to three of those above the column's top is still part of the same pile.
+                -- One of the game's plate rows: it spreads its plate frames this far apart.
                 e.row = (plate:GetHeight() or 32) * plate:GetEffectiveScale()
-                e.reach = 3 * e.row
                 e.taken = false
                 e.name = PlateName(data)
                 byPlate[plate] = e
@@ -474,135 +422,35 @@ local function ComputeStack()
         end
     end
     for i = n + 1, table.getn(live) do live[i] = nil end
-    local now = GetTime()
-    local share = db.stackOverlap / 100
-    if db.stackMode == "collapse" then
-        ComputePiles(n, share)
-        return
-    end
-    local cols = {}
-
-    -- Last pass's columns first, in their old order, keeping the members that still belong.
-    for _, list in pairs(order) do
-        local col
-        for i = 1, table.getn(list) do
-            local e = byPlate[list[i]]
-            -- The game reuses plate frames: a frame now showing another mob starts afresh.
-            if e and e.name ~= memberName[e.plate] then e = nil end
-            if e and not e.taken then
-                if not col then
-                    col = { list = { e }, x = e.x, w = e.w }
-                    e.taken = true
-                elseif table.getn(col.list) < db.stackMax then
-                    local top = col.list[table.getn(col.list)]
-                    local far = math.abs(e.x - col.x) > db.stackLeave * math.max(e.w, col.w)
-                        or math.abs(e.y - top.y) > db.stackLeave * ROWS_PER_WIDTH * e.row
-                    if db.stackKeep or now - (joinedAt[e.plate] or 0) < STICK_TIME or not far then
-                        table.insert(col.list, e)
-                        e.taken = true
-                    end
-                end
-            end
-        end
-        if col then table.insert(cols, col) end
-    end
-
-    -- Then every free plate, bottom-up: join the closest column it overlaps enough, or start one.
-    table.sort(live, function(a, b) return a.y < b.y end)
-    for i = 1, n do
-        local e = live[i]
-        if not e.taken then
-            local best, bestDx
-            for j = 1, table.getn(cols) do
-                local col = cols[j]
-                local count = table.getn(col.list)
-                local top = col.list[count]
-                local dx = math.abs(e.x - col.x)
-                if count < db.stackMax
-                    and (e.w + col.w) * 0.5 - dx >= share * math.min(e.w, col.w)
-                    and math.abs(e.y - top.y) <= e.reach
-                    and (not bestDx or dx < bestDx) then
-                    best, bestDx = col, dx
-                end
-            end
-            if best then
-                table.insert(best.list, e)
-            else
-                table.insert(cols, { list = { e }, x = e.x, w = e.w })
-            end
-            e.taken = true
-            joinedAt[e.plate] = now
-        end
-    end
-
-    -- Remember the columns, and pack each one upward from its bottom plate.
-    for k in pairs(order) do order[k] = nil end
-    local screenTop = UIParent:GetTop() * UIParent:GetEffectiveScale()
-    for j = 1, table.getn(cols) do
-        local col = cols[j]
-        local plateList = {}
-        local prev
-        for i = 1, table.getn(col.list) do
-            local e = col.list[i]
-            plateList[i] = e.plate
-            memberName[e.plate] = e.name
-            if not prev then
-                e.fx, e.fy = e.x, e.y
-            else
-                e.fx, e.fy = col.x, prev.fy + (prev.h + e.h) * 0.5 + db.stackGap
-                if db.clampTop and e.fy + e.h * 0.5 > screenTop - 4 then e.fy = screenTop - 4 - e.h * 0.5 end
-            end
-            wantX[e.plate], wantY[e.plate] = e.fx - e.x, e.fy - e.y
-            prev = e
-        end
-        order[col.list[1].plate] = plateList
-    end
+    ComputePiles(n, db.stackOverlap / 100)
 end
 
-local sinceStack = 0
+local sinceCollapse = 0
 local function OnUpdate()
     if not installed then return end
-    local dt = arg1 or 0
-    sinceStack = sinceStack + dt
-    if sinceStack >= 0.05 then
-        sinceStack = 0
-        ComputeStack()
+    sinceCollapse = sinceCollapse + (arg1 or 0)
+    if sinceCollapse >= 0.05 then
+        sinceCollapse = 0
+        ComputeCollapse()
     end
-    local rate = db.stackSpeed > 0 and math.min(1, dt * db.stackSpeed) or 1
     for plate, data in pairs(plates) do
-        if not plate:IsShown() then
-            -- A recycled plate starts where the game puts it, then glides to its place.
-            offX[plate], offY[plate] = 0, 0
-            data.spAnchored = false
-        elseif data.style then
-            local tx, ty = wantX[plate] or 0, wantY[plate] or 0
-            local cx, cy = offX[plate] or 0, offY[plate] or 0
-            local nx, ny = cx + (tx - cx) * rate, cy + (ty - cy) * rate
-            if math.abs(tx - nx) < 0.5 then nx = tx end
-            if math.abs(ty - ny) < 0.5 then ny = ty end
-            -- Offsets are set in the skin's own units, so a scale change (targeting) re-anchors too.
-            local eff = data.style.visual:GetEffectiveScale()
-            if nx ~= cx or ny ~= cy or not data.spAnchored or data.spEff ~= eff then
-                offX[plate], offY[plate] = nx, ny
-                Anchor(plate, data, nx, ny)
-                data.spAnchored, data.spEff = true, eff
-            end
+        if plate:IsShown() and data.style then
             -- A plate hidden in a pile mustn't be an invisible click target.
             local hidden = pileHidden[plate] and not data.presentationMasked
             if hidden and not data.spClickOff then
                 plate:SetHitRectInsets(1000000, 1000000, 1000000, 1000000)
-                data.spClickOff, data.spInsetX, data.spInsetY = true, nil, nil
+                data.spClickOff = true
             elseif not hidden and data.spClickOff then
                 plate:SetHitRectInsets(0, 0, 0, 0)
-                data.spClickOff, data.spAnchored = false, false
+                data.spClickOff = false
             end
             if SP.debug then SP.ShowMarker(plate, data) end
         end
     end
 end
 
--- /asp debug: a cyan dot where the game puts each plate's health bar. SurvivorPlates never
--- moves the dot, so a skin sitting on its dot is unmoved, and one above it was stacked.
+-- /asp debug: a cyan dot where the game puts each plate's health bar, including plates
+-- hidden in a pile.
 function SP.ShowMarker(plate, data)
     local mark = data.spMarker
     if not mark then
@@ -686,33 +534,27 @@ events:SetScript("OnUpdate", function()
         SP.unitsDirty = false
         RefreshBigNames()
     end
-    -- An error here would stop every plate after the failing one from moving, every frame.
+    -- An error here would stop every plate after the failing one from updating, every frame.
     -- Report the first one in chat instead of failing silently.
     local ok, err = pcall(OnUpdate)
     if not ok and not SP.updateError then
         SP.updateError = err
-        Print("|cffff5555error while placing plates:|r " .. tostring(err))
+        Print("|cffff5555error while updating plates:|r " .. tostring(err))
     end
 end)
 
 function SP.IsInstalled() return installed end
 
--- How many plates the last stacking pass saw, how many it moved, and the biggest move.
-function SP.StackStats()
-    local seen, moved, most, hidden = 0, 0, 0, 0
+-- How many plates are on screen, and how many of those are hidden in piles.
+function SP.PileStats()
+    local seen, hidden = 0, 0
     for plate, data in pairs(plates) do
         if plate:IsShown() and data.style and data.style.visual:IsShown() then
             seen = seen + 1
             if pileHidden[plate] then hidden = hidden + 1 end
-            local dx, dy = wantX[plate] or 0, wantY[plate] or 0
-            local d = math.sqrt(dx * dx + dy * dy)
-            if d > 0.5 then
-                moved = moved + 1
-                if d > most then most = d end
-            end
         end
     end
-    return seen, moved, math.floor(most + 0.5), hidden
+    return seen, hidden
 end
 function SP.PlateCount()
     local shown, all = 0, 0

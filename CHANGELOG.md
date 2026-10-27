@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+- **Stack in columns is gone for now.** It was too jumpy and messy. Mode is **Spread** (the game's own layout, the default) or **Collapse piles**. Characters that were on Stack are back on Spread.
+- Its settings went with it: Gap between plates, Leave a column beyond, Most plates in a column, Movement speed, Keep stacks on screen, Click area follows the plate and Plates stay in their column.
+- The settings window is shorter. The Stacking section is now **Piles**, and "Only stack in combat" is **Only collapse in combat**.
+
 ## 0.4.2
 - **Touch to join.** A plate that touches or overlaps any plate in a pile joins it immediately, whatever the mob. Piles that touch each other merge. The count includes every mob in the pile; the name shown is the visible plate's. Bosses and guardians still never pile.
 - The longer-range pick-up from 0.4.1 still applies, for plates of the same mob.

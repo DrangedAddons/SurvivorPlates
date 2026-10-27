@@ -2,7 +2,7 @@
 local SP = SurvivorPlates
 
 local LABELS = {
-    spread = "Spread (game default)", stack = "Stack in columns", collapse = "Collapse piles",
+    spread = "Spread (game default)", collapse = "Collapse piles",
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
 }
@@ -145,7 +145,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(570)
+    frame:SetHeight(460)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -175,17 +175,10 @@ local function Build()
     frame.status = status
 
     local L, R = 20, 290
-    Heading(frame, "Stacking", L, -44)
+    Heading(frame, "Piles", L, -44)
     Cycle(frame, "stackMode", "Mode", L, -66)
-    Slider(frame, "stackGap", "Gap between plates", 0, 20, 1, L, -116, " px")
-    Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, L, -156, "%")
-    Slider(frame, "stackLeave", "Leave a column beyond", 0.5, 6, 0.5, L, -196, " widths")
-    Slider(frame, "stackMax", "Most plates in a column", 1, 30, 1, L, -236)
-    Slider(frame, "stackSpeed", "Movement speed (0 = instant)", 0, 30, 1, L, -276)
-    Check(frame, "clampTop", "Keep stacks on screen", L, -308)
-    Check(frame, "combatOnly", "Only stack in combat", L, -332)
-    Check(frame, "moveClicks", "Click area follows the plate", L, -356)
-    Check(frame, "stackKeep", "Plates stay in their column", R, -308)
+    Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, L, -116, "%")
+    Check(frame, "combatOnly", "Only collapse in combat", L, -148)
 
     Heading(frame, "Size", R, -44)
     Slider(frame, "width", "Width", 40, 250, 1, R, -66, " px")
@@ -195,13 +188,13 @@ local function Build()
     Cycle(frame, "namePos", "Name", R, -222)
     Cycle(frame, "healthText", "Health text", R, -270)
 
-    Heading(frame, "Target and priority", L, -390)
-    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -412)
-    Check(frame, "targetHighlight", "Gold border on the target", L, -444)
-    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -468)
-    Check(frame, "minimapButton", "Show minimap button", L, -500)
-    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, R, -412)
-    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, R, -452)
+    Heading(frame, "Target and priority", L, -190)
+    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -212)
+    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -252)
+    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -292)
+    Check(frame, "targetHighlight", "Gold border on the target", L, -324)
+    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -348)
+    Check(frame, "minimapButton", "Show minimap button", L, -380)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)
@@ -223,11 +216,10 @@ local function Build()
     end)
 end
 
--- "84 plates, 57 moved" or, collapsing, "84 plates, 57 hidden in piles".
+-- "84 plates, 57 hidden in piles".
 function SP.StatusLine()
-    local seen, moved, _, hidden = SP.StackStats()
-    if SP.Get("stackMode") == "collapse" then return seen .. " plates, " .. hidden .. " hidden in piles" end
-    return seen .. " plates, " .. moved .. " moved"
+    local seen, hidden = SP.PileStats()
+    return seen .. " plates, " .. hidden .. " hidden in piles"
 end
 
 function SP.RefreshOptions()
@@ -261,11 +253,11 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
             or "debug off.")
     elseif msg == "status" then
         local shown, all = SP.PlateCount()
-        local seen, pushed, most, hidden = SP.StackStats()
+        local _, hidden = SP.PileStats()
         SP.Print("v" .. SP.version .. ", " .. (SP.IsInstalled() and "hooked into SurvivorsDragonUi" or "NOT hooked")
-            .. ", " .. shown .. " of " .. all .. " known plates shown. Stacking: " .. SP.Get("stackMode")
-            .. ", " .. pushed .. " of " .. seen .. " moved into columns, biggest move " .. most .. " px, " .. hidden .. " hidden in piles.")
-        if SP.updateError then SP.Print("last placement error: " .. tostring(SP.updateError)) end
+            .. ", " .. shown .. " of " .. all .. " known plates shown. Mode: " .. SP.Get("stackMode")
+            .. ", " .. hidden .. " hidden in piles.")
+        if SP.updateError then SP.Print("last error: " .. tostring(SP.updateError)) end
     else
         SP.ToggleOptions()
     end

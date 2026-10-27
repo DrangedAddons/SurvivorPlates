@@ -1,17 +1,19 @@
 # SurvivorPlates
 
-An [Azeroth Survivors](https://discord.gg/azerothsurvivors) addon. It's a companion to **SurvivorsDragonUi** that adds the nameplate settings you'd expect from a WoW nameplate addon: stacking, size, and target highlighting.
+An [Azeroth Survivors](https://discord.gg/azerothsurvivors) addon. It's a companion to **SurvivorsDragonUi** that adds nameplate settings: collapsing piles of mobs into one plate, size, and target highlighting.
 
 Click the minimap button or type `/asp` in game to open the settings. Every change shows at once.
 
 ## Settings
 
-**Stacking**
-- **Mode:** **Spread** (the default) leaves plates where the game puts them. The game already spreads them so they never overlap. **Stack in columns** lines up plates that overlap sideways into tidy columns, packed right on top of each other. **Collapse piles** shows one plate per pile of the same mob, with a count ("Gurubashi Scout x12"); the pile's other plates are hidden. Piles last until their mobs die, so the camera doesn't break them up.
-- **Gap between plates**, **Sideways overlap to join**, **Leave a column beyond** (how far a mob has to get before its plate leaves; higher is stickier), **Most plates in a column** and **Movement speed** (0 jumps straight to place).
-- **Plates stay in their column** (on by default): a plate that joins a column stays until its mob dies. Untick it to let plates leave once their mob gets further away than **Leave a column beyond**.
-- **Keep stacks on screen**, **Only stack in combat**.
-- **Click area follows the plate:** clicking a moved plate targets its mob.
+**Piles**
+- **Mode:** **Spread** (the default) leaves plates where the game puts them. The game already spreads them so they never overlap. **Collapse piles** shows one plate per pile of mobs, with a count ("Gurubashi Scout x12"). The pile's other plates are hidden and can't be clicked.
+  - A plate that touches any plate in a pile joins it, whatever the mob. Plates of the same mob are also picked up from a few plate rows away, and piles that touch merge.
+  - A plate only leaves its pile when its mob dies. A plate the game hides for a moment (off screen, out of range) keeps its place for a minute.
+  - If your target is in a pile, the pile shows your target's plate.
+  - Bosses and guardians are never piled.
+- **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
+- **Only collapse in combat.**
 
 There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.
 
@@ -25,8 +27,8 @@ Settings are per character.
 - `/asp`: open or close the settings
 - `/asp reset`: back to defaults
 - `/asp minimap`: show or hide the minimap button
-- `/asp status`: whether it's hooked into SurvivorsDragonUi, how many plates it sees and how many it stacked
-- `/asp debug`: a cyan dot where the game places each plate, to see what stacking moved
+- `/asp status`: whether it's hooked into SurvivorsDragonUi, how many plates it sees and how many are hidden in piles
+- `/asp debug`: a cyan dot where the game places each plate, hidden ones included
 
 ## Requirements
-SurvivorsDragonUi with its nameplate skin on. SurvivorPlates resizes and moves that skin, so it does nothing without it. If a SurvivorsDragonUi update changes how its plates are built, SurvivorPlates switches itself off and says so in chat.
+SurvivorsDragonUi with its nameplate skin on. SurvivorPlates resizes and hides that skin, so it does nothing without it. If a SurvivorsDragonUi update changes how its plates are built, SurvivorPlates switches itself off and says so in chat.

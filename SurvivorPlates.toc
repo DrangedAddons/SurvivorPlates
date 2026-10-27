@@ -1,8 +1,8 @@
 ## Interface: 11200
 ## Title: SurvivorPlates
-## Notes: Nameplate stacking, size and target options for SurvivorsDragonUi.
+## Notes: Collapse piles of mobs into one nameplate, plus size and target options for SurvivorsDragonUi.
 ## Author: Dranged
-## Version: 0.4.2
+## Version: 0.5.0
 ## Dependencies: SurvivorsDragonUi
 ## SavedVariables: SurvivorPlatesDB
 
