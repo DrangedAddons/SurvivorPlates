@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+- **Boss damage breakdown.** On boss and guardian bars the damage doesn't drain away: the missing health is split into class-coloured segments, one per player, each as wide as that player's share of the damage so far. Biggest share sits next to the health. Pets count toward their owner; damage from anyone the addon can't place shows pale gold.
+  - It covers the whole fight and resets once the boss has been off the bars for 15 seconds.
+  - Piles keep the draining chunk: with mobs joining and dying all the time, a running split wouldn't mean much.
+  - Uses **Damage in the dealer's class colour**; untick it and boss bars drain like piles.
+
 ## 0.14.2
 - Removed **Only form piles in combat**. You're always fighting in this game, and the game doesn't report combat the way the option expected, so ticking it just switched piles off. Piles are always on while Collapse piles or the pile bars are.
 

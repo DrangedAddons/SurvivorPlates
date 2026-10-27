@@ -63,7 +63,8 @@ local CLASS_COLOR = {
     MAGE = { 0.41, 0.8, 0.94 }, WARLOCK = { 0.58, 0.51, 0.79 }, DRUID = { 1, 0.49, 0.04 },
 }
 
--- A player or pet name -> its player's class colour, from you, your party and their pets.
+-- A player or pet name -> its player's class colour and unit ("player", "party1", ...), from
+-- you, your party and their pets. Unknown names get the plain chunk colour and no unit.
 local UNITS = { "player", "party1", "party2", "party3", "party4" }
 local PETS = { "pet", "partypet1", "partypet2", "partypet3", "partypet4" }
 local function ColorOf(name)
@@ -71,11 +72,81 @@ local function ColorOf(name)
         if UnitName(UNITS[i]) == name or (UnitExists(PETS[i]) and UnitName(PETS[i]) == name) then
             local _, class = UnitClass(UNITS[i])
             local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class or ""]
-            if c then return { c.r, c.g, c.b } end
-            return CLASS_COLOR[class or ""] or CHUNK_COLOR
+            if c then return { c.r, c.g, c.b }, UNITS[i] end
+            return CLASS_COLOR[class or ""] or CHUNK_COLOR, UNITS[i]
         end
     end
     return CHUNK_COLOR
+end
+
+-- Bosses and guardians: damage for the whole fight, by player, kept until the boss has been
+-- gone from the bars for BOSS_FORGET seconds. boss name -> { [unit or "other"] = { amount, color } }.
+-- Their bars show the missing health split by who took it off, in class colours, instead of
+-- a chunk that drains away. Only bosses: there's one of each, so the split means something.
+local BOSS_FORGET = 15
+local bossHits, bossSeen = {}, {}
+
+local function AddBossHit(target, source, amount)
+    if not bossSeen[target] then return end
+    local color, unit = ColorOf(source)
+    local key = unit or "other"
+    local rec = bossHits[target]
+    if not rec then
+        rec = {}
+        bossHits[target] = rec
+    end
+    local e = rec[key]
+    if not e then
+        e = { amount = 0 }
+        rec[key] = e
+    end
+    e.amount = e.amount + amount
+    e.color = color
+end
+
+local function ByAmount(a, b) return a.amount > b.amount end
+
+-- The boss bar's missing health, split into one segment per player, biggest share first
+-- (next to the health), each as wide as that player's share of the damage.
+local function DrawBreakdown(b, p)
+    local segs = b.segs
+    local rec = bossHits[p.name]
+    local parts, total = {}, 0
+    if rec then
+        for _, e in pairs(rec) do
+            table.insert(parts, e)
+            total = total + e.amount
+        end
+    end
+    local missing = 1 - p.health
+    local n = 0
+    if total > 0 and missing > 0.001 then
+        table.sort(parts, ByAmount)
+        local inner = BAR_W - 2
+        local x = p.health * inner
+        for i = 1, table.getn(parts) do
+            local w = missing * inner * parts[i].amount / total
+            if w >= 0.5 then
+                n = n + 1
+                local seg = segs[n]
+                if not seg then
+                    seg = b:CreateTexture(nil, "ARTWORK")
+                    seg:SetTexture(BAR_TEX)
+                    seg:SetHeight(BAR_H - 2)
+                    segs[n] = seg
+                end
+                seg:ClearAllPoints()
+                seg:SetPoint("LEFT", b.health, "LEFT", x, 0)
+                seg:SetWidth(w)
+                seg:SetTexCoord(x / inner, (x + w) / inner, 0, 1)
+                local c = parts[i].color or CHUNK_COLOR
+                seg:SetVertexColor(c[1], c[2], c[3], 0.85)
+                seg:Show()
+                x = x + w
+            end
+        end
+    end
+    for i = n + 1, table.getn(segs) do segs[i]:Hide() end
 end
 
 local function TopDamagerColor(mob)
@@ -144,6 +215,7 @@ local function Bar(i)
     hl:SetAllPoints(b)
     hl:SetBlendMode("ADD")
     b.health, b.name, b.count, b.edge, b.skull, b.lag = health, name, count, edge, skull, lag
+    b.segs = {}
     b:SetScript("OnClick", function()
         -- 1.12 has no unit token for a plate; target the nearest mob with this name.
         if this.mob then TargetByName(this.mob, true) end
@@ -320,6 +392,13 @@ local function Refresh()
         s.last = p.health
         lags[p.id] = s
         b.lagState, b.hp = s, p.health
+        if p.boss and SP.Get("pileDamageColors") then
+            -- Bosses keep the whole fight's split instead of a draining chunk.
+            s.v = p.health
+            DrawBreakdown(b, p)
+        else
+            for k = 1, table.getn(b.segs) do b.segs[k]:Hide() end
+        end
         b.lag:SetValue(s.v)
         b.mob = p.name
         b.name:SetText(p.name)
@@ -344,6 +423,17 @@ local function Refresh()
         bars[i].lagState = nil
     end
     lagOf = lags
+    -- Bosses on the bars now; forget a boss's damage once it's been gone a while.
+    local now = GetTime()
+    for i = 1, table.getn(list) do
+        if list[i].boss then bossSeen[list[i].name] = now end
+    end
+    for name, at in pairs(bossSeen) do
+        if now - at > BOSS_FORGET then
+            bossSeen[name] = nil
+            bossHits[name] = nil
+        end
+    end
     -- Keep the panel's size to its bars; unlocked and empty, it still shows one bar's room.
     local rows = math.max(shown, unlocked and 1 or 0)
     panel:SetHeight(math.max(1, rows * (BAR_H + SPACING) - SPACING))
@@ -447,6 +537,7 @@ local function OnHit(message)
                 end
                 rec.at = now
                 rec.by[source] = (rec.by[source] or 0) + amount
+                AddBossHit(target, source, amount)
             end
             return
         end
