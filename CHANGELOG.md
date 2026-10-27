@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+- **Pile bars are ordered by health, most at the bottom.** A pile's health is its members' health added up. The bottom bar is the biggest pile and changes least; small piles you're finishing off sit at the top.
+- Two piles only swap places once one has 15% more health than the other, so piles with similar health stop flipping back and forth.
+- The panel's bottom edge stays put and new bars stack upward. Its default spot moved to match; a position you dragged it to is kept.
+- When there are more piles than **Most pile bars**, the ones with the least health are left off.
+
 ## 0.8.1
 - Removed the **Game plate frame size** test from 0.8.0. The frames did shrink (176x44 down to 18x4) but the plates stayed exactly as spread, so the game spaces plates by a fixed size and ignores the frame. Plates are back to the game's frame size, which also restores their full click area.
 

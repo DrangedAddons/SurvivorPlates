@@ -46,7 +46,8 @@ local function Bar(i)
     local b = CreateFrame("Button", nil, panel)
     b:SetWidth(BAR_W)
     b:SetHeight(BAR_H)
-    b:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(i - 1) * (BAR_H + SPACING))
+    -- Bar 1 is the bottom one; the rest stack upward.
+    b:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, (i - 1) * (BAR_H + SPACING))
     b:RegisterForClicks("LeftButtonUp")
     local bg = b:CreateTexture(nil, "BACKGROUND")
     bg:SetTexture("Interface\\Buttons\\WHITE8X8")
@@ -101,7 +102,7 @@ local function Place()
     elseif x and y then
         panel:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
     else
-        panel:SetPoint("RIGHT", UIParent, "RIGHT", -260, 120)
+        panel:SetPoint("BOTTOMRIGHT", UIParent, "RIGHT", -260, 60)
     end
 end
 
@@ -122,11 +123,42 @@ header:RegisterForDrag("LeftButton")
 header:SetScript("OnDragStart", StartDrag)
 header:SetScript("OnDragStop", StopDrag)
 
--- Bosses first, then the biggest piles.
-local function ByCount(a, b)
-    if (a.boss and 1 or 0) ~= (b.boss and 1 or 0) then return a.boss and true or false end
-    if a.count ~= b.count then return a.count > b.count end
-    return a.name < b.name
+-- Order, bottom to top: most health first. Two piles only swap once one has SWAP_MARGIN
+-- more health than the other, so piles that are close don't keep trading places.
+local SWAP_MARGIN = 0.15
+local lastRank = {} -- pile id -> its place last refresh
+
+local function Before(a, b)
+    local ra, rb = lastRank[a.id], lastRank[b.id]
+    if ra and rb then
+        local big = math.max(a.hp, b.hp)
+        if math.abs(a.hp - b.hp) <= big * SWAP_MARGIN then return ra < rb end
+    end
+    if a.hp ~= b.hp then return a.hp > b.hp end
+    return (ra or 1000000) < (rb or 1000000)
+end
+
+local function ByLastRank(a, b)
+    local ra, rb = lastRank[a.id] or 1000000, lastRank[b.id] or 1000000
+    if ra ~= rb then return ra < rb end
+    return a.hp > b.hp
+end
+
+-- Start from last refresh's order, then insertion sort: Before isn't a strict order, which
+-- table.sort can choke on.
+local function Order(list)
+    table.sort(list, ByLastRank)
+    for i = 2, table.getn(list) do
+        local p = list[i]
+        local j = i - 1
+        while j >= 1 and Before(p, list[j]) do
+            list[j + 1] = list[j]
+            j = j - 1
+        end
+        list[j + 1] = p
+    end
+    for k in pairs(lastRank) do lastRank[k] = nil end
+    for i = 1, table.getn(list) do lastRank[list[i].id] = i end
 end
 
 local function Refresh()
@@ -138,7 +170,7 @@ local function Refresh()
     local unlocked = not SP.Get("pileBarsLocked") and not AbovePlayer()
     local list = {}
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
-    table.sort(list, ByCount)
+    Order(list)
     local shown = math.min(table.getn(list), SP.Get("pileBarsMax"))
     for i = 1, shown do
         local b, p = Bar(i), list[i]

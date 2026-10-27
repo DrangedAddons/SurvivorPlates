@@ -7,7 +7,8 @@
 SurvivorPlates = {}
 local SP = SurvivorPlates
 -- This pass's piles of 2+ (every pile, singles too, while world plates are hidden):
--- { name, count, health (0-1 average), target, boss }
+-- { id (the pile's first plate, stable while it lives), name, count, health (0-1 average),
+--   hp (the members' bar values added up), target, boss }
 SP.pileList = {}
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
 
@@ -399,14 +400,20 @@ local function ComputePiles(n, share)
             end
             if count > 1 or hideAll then
                 pileCount[shown.plate] = count
-                -- For the pile bars: the pile's average health, read off each member's bar.
-                local sum = 0
+                -- For the pile bars: the pile's average health and its health added up, read
+                -- off each member's bar.
+                local sum, hp = 0, 0
                 for k = 1, count do
                     local bar = plates[pile.live[k].plate].bar
                     local low, high = bar:GetMinMaxValues()
-                    if high and low and high > low then sum = sum + ((bar:GetValue() or low) - low) / (high - low) end
+                    if high and low and high > low then
+                        local v = (bar:GetValue() or low) - low
+                        sum = sum + v / (high - low)
+                        hp = hp + v
+                    end
                 end
-                table.insert(SP.pileList, { name = shown.name or "?", count = count, health = sum / count,
+                table.insert(SP.pileList, { id = pile.live[1].plate, name = shown.name or "?", count = count,
+                    health = sum / count, hp = hp,
                     target = IsTarget(shown.plate, plates[shown.plate]), boss = bigNames[shown.name or ""] })
             end
         end
