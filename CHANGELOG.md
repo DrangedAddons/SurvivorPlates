@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.1
+- **Vertical offset** fixes:
+  - The label no longer runs into the value.
+  - **+** always moves the pile bars up and **-** down, above or below your character. Above and below each keep their own offset (below starts at -80).
+  - The value sits in a box under the slider. Click it, type a number and press Enter. The slider, the - / + buttons and the box always show the same value.
+
 ## 0.14.0
 - **Settings window redesigned into two columns.**
   - **Left: Nameplates**, everything about the plates above the mobs: **Show nameplates above mobs**, **Piles of mobs** (Spread or Collapse piles), size, name, health text, target and boss settings.

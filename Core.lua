@@ -39,7 +39,8 @@ SP.defaults = {
     pileBarsX = nil, -- saved panel position (screen offset from bottom-left); nil = default
     pileBarsY = nil,
     pileBarsAnchor = "free", -- "free" (where you drag it), "player" (above your character) or "below"
-    pileBarsHeight = 80, -- "player"/"below": how far from the middle of the screen the stack starts
+    pileBarsHeight = 80, -- "player": the stack's bottom edge, px above the middle of the screen (+ is up)
+    pileBarsBelowY = -80, -- "below": the stack's top edge, px from the middle of the screen (+ is up)
     pileBarsGrow = "up", -- "free": "up" (fixed bottom, most health at the bottom) or "down" (the inverse)
     pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
     worldPlates = true, -- false: hide every nameplate above the mobs, in any mode

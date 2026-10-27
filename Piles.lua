@@ -169,11 +169,11 @@ local function Place()
     panel:ClearAllPoints()
     local anchor, down = SP.Get("pileBarsAnchor"), GrowsDown()
     local x, y = SP.Get("pileBarsX"), SP.Get("pileBarsY")
-    local away = SP.Get("pileBarsHeight") / SP.Get("pileBarsScale")
+    local scale = SP.Get("pileBarsScale")
     if anchor == "player" then
-        panel:SetPoint("BOTTOM", UIParent, "CENTER", 0, away)
+        panel:SetPoint("BOTTOM", UIParent, "CENTER", 0, SP.Get("pileBarsHeight") / scale)
     elseif anchor == "below" then
-        panel:SetPoint("TOP", UIParent, "CENTER", 0, -away)
+        panel:SetPoint("TOP", UIParent, "CENTER", 0, SP.Get("pileBarsBelowY") / scale)
     elseif x and y then
         panel:SetPoint(down and "TOPLEFT" or "BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
     else

@@ -27,7 +27,7 @@ There's no overlap mode. The game spreads its plates before any addon sees them,
 - **Placement:**
   - **Position:** **Where you drag it** (untick **Lock pile bars** to move it), **Above your character** or **Below your character**. The camera keeps your character in the middle of the screen, so above or below means a set offset from the middle.
   - **Grow (where you drag it):** **Upward** keeps the bottom row and drag strip still with the most health at the bottom; **Downward** is the inverse. Above your character always grows up, below always down.
-  - **Vertical offset (above / below you):** lines the stack up with your UI, with - and + buttons to nudge it a pixel at a time.
+  - **Vertical offset:** lines the stack up with your UI. **+** moves it up, **-** down, a pixel at a time, or click the value under the slider and type one. Above and below each keep their own offset.
   - The fixed edge never moves. Bars that don't fit before the edge of the screen are left off, least health first.
 - **Look:** **Most pile bars**, **Pile bars scale**, and **Damage in the dealer's class colour**: damage taken shows as a chunk on the bar that holds for a moment, then drains away, in the class colour of whoever dealt most of it (your partner's only if the game reports their hits in the combat log; check with `/asp combatlog`). Unticked, chunks are pale gold.
 

@@ -52,6 +52,13 @@ local function FormatValue(value, step, suffix)
     return tostring(math.floor(value + 0.5)) .. (suffix or "")
 end
 
+-- key can be a setting name, or a function returning one (for a slider that edits whichever
+-- setting currently applies).
+local function KeyOf(key)
+    if type(key) == "function" then return key() end
+    return key
+end
+
 local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
     local s = CreateFrame("Slider", nil, parent)
     s:SetOrientation("HORIZONTAL")
@@ -72,11 +79,12 @@ local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
     title:SetText(label)
     local value = Text(s, 11, 1, 0.82, 0)
     value:SetPoint("BOTTOMRIGHT", s, "TOPRIGHT", 0, 1)
+    s.title, s.valueText = title, value
     s:SetScript("OnValueChanged", function()
         local v = this:GetValue()
         if step >= 1 then v = math.floor(v + 0.5) else v = math.floor(v / step + 0.5) * step end
         value:SetText(FormatValue(v, step, suffix))
-        if not this.refreshing and SP.Get(key) ~= v then SP.Set(key, v) end
+        if not this.refreshing and SP.Get(KeyOf(key)) ~= v then SP.Set(KeyOf(key), v) end
     end)
     -- The mouse wheel nudges it one step.
     s:EnableMouseWheel(true)
@@ -85,18 +93,27 @@ local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
     end)
     s.Refresh = function()
         s.refreshing = true
-        s:SetValue(SP.Get(key))
-        value:SetText(FormatValue(SP.Get(key), step, suffix))
+        s:SetValue(SP.Get(KeyOf(key)))
+        value:SetText(FormatValue(SP.Get(KeyOf(key)), step, suffix))
         s.refreshing = false
     end
     table.insert(widgets, s)
     return s
 end
 
--- A slider with - and + buttons either side, for settings you line up by the pixel.
+-- A slider for settings you line up by the pixel: - and + buttons either side, and the value
+-- in a box under it that you can click and type into. Slider, buttons and box always agree:
+-- each one sets the value, and setting it refreshes all three.
 local function NudgeSlider(parent, key, label, minV, maxV, step, x, y, suffix)
     local s = Slider(parent, key, label, minV, maxV, step, x + 20, y, suffix)
     s:SetWidth(180)
+    s.valueText:Hide()
+    local function Apply(v)
+        v = tonumber(v)
+        if not v then return end
+        v = math.floor(v / step + 0.5) * step
+        SP.Set(KeyOf(key), math.max(minV, math.min(maxV, v)))
+    end
     local function Nudge(text, delta, point, xOff)
         local b = CreateFrame("Button", nil, parent)
         b:SetWidth(18)
@@ -117,13 +134,50 @@ local function NudgeSlider(parent, key, label, minV, maxV, step, x, y, suffix)
         hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
         hl:SetAllPoints(b)
         hl:SetBlendMode("ADD")
-        b:SetScript("OnClick", function()
-            local v = math.max(minV, math.min(maxV, SP.Get(key) + delta))
-            SP.Set(key, v)
-        end)
+        b:SetScript("OnClick", function() Apply(SP.Get(KeyOf(key)) + delta) end)
     end
     Nudge("-", -step, "RIGHT", -182)
     Nudge("+", step, "LEFT", 182)
+
+    local box = CreateFrame("EditBox", nil, parent)
+    box:SetWidth(64)
+    box:SetHeight(18)
+    box:SetPoint("TOP", s, "BOTTOM", 0, -3)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(6)
+    box:SetJustifyH("CENTER")
+    Font(box, 11)
+    box:SetTextColor(1, 0.82, 0)
+    box:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 8,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    box:SetBackdropColor(0, 0, 0, 0.6)
+    box:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    local unit = Text(parent, 11, 0.6, 0.6, 0.6)
+    unit:SetPoint("LEFT", box, "RIGHT", 4, 0)
+    unit:SetText((string.gsub(suffix or "", "^ ", "")))
+    box.Refresh = function()
+        if not box.editing then box:SetText(FormatValue(SP.Get(KeyOf(key)), step)) end
+    end
+    box:SetScript("OnEditFocusGained", function()
+        this.editing = true
+        this:HighlightText()
+    end)
+    box:SetScript("OnEditFocusLost", function()
+        this.editing = false
+        Apply(this:GetText())
+        this.Refresh()
+    end)
+    box:SetScript("OnEnterPressed", function() this:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function()
+        this.editing = false
+        this.Refresh()
+        this:ClearFocus()
+    end)
+    table.insert(widgets, box)
     return s
 end
 
@@ -264,12 +318,15 @@ local function Build()
     SubHeading(frame, "Placement", R, -184)
     Cycle(frame, "pileBarsAnchor", "Position", R, -200)
     Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -246)
-    NudgeSlider(frame, "pileBarsHeight", "Vertical offset (above / below you)", -300, 500, 1, R, -292, " px")
-    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -330)
-    SubHeading(frame, "Look", R, -364)
-    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -380)
-    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -420)
-    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -458)
+    -- Above and below keep their own offset; + always moves the stack up.
+    NudgeSlider(frame, function()
+        return SP.Get("pileBarsAnchor") == "below" and "pileBarsBelowY" or "pileBarsHeight"
+    end, "Vertical offset", -500, 500, 1, R, -292, " px")
+    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -356)
+    SubHeading(frame, "Look", R, -390)
+    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -406)
+    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -446)
+    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -484)
 
     Check(frame, "minimapButton", "Show minimap button", L, -606)
 
