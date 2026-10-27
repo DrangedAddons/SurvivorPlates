@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1
+- **The pile bars' bottom edge no longer moves.** A tall stack used to hit the top of the screen and push the whole panel down. Now it shows only the bars that fit above its bottom edge, dropping the ones with the least health.
+- **Pile bars draw over SurvivorsDragonUi's combat text** instead of under it.
+
 ## 0.11.0
 - **Damage chunks on pile bars.** When a pile takes damage, the part of the bar it lost turns pale gold, holds for a moment, then drains down to the new health. Hits landing close together build one bigger chunk.
 - Pile bars refresh twice as often (every 0.1 s), so hits show sooner.

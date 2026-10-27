@@ -14,8 +14,9 @@ local SKULL_COLOR = { boss = { 1, 1, 1 }, final = { 1, 0.3, 0.3 }, guardian = { 
 local panel = CreateFrame("Frame", "SurvivorPlatesPileBars", UIParent)
 panel:SetWidth(BAR_W)
 panel:SetHeight(BAR_H)
-panel:SetFrameStrata("MEDIUM")
-if panel.SetClampedToScreen then panel:SetClampedToScreen(true) end
+-- Over SurvivorsDragonUi's combat text, which it draws in HIGH.
+panel:SetFrameStrata("HIGH")
+panel:SetFrameLevel(100)
 panel:SetMovable(true)
 panel:RegisterForDrag("LeftButton")
 panel:Hide()
@@ -196,7 +197,15 @@ local function Refresh()
     local list = {}
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
     Order(list)
-    local shown = math.min(table.getn(list), SP.Get("pileBarsMax"))
+    -- Only as many bars as fit between the panel's bottom and the top of the screen. The
+    -- bottom never moves; bars that don't fit (the least health) are left off.
+    local fit = 1000
+    local bottom = panel:GetBottom()
+    if bottom and UIParent:GetTop() then
+        local top = UIParent:GetTop() * UIParent:GetEffectiveScale() / panel:GetEffectiveScale()
+        fit = math.max(1, math.floor((top - bottom - 20 + SPACING) / (BAR_H + SPACING)))
+    end
+    local shown = math.min(table.getn(list), SP.Get("pileBarsMax"), fit)
     local lags = {}
     for i = 1, shown do
         local b, p = Bar(i), list[i]
@@ -234,6 +243,8 @@ local function Refresh()
     -- Keep the panel's size to its bars; unlocked and empty, it still shows one bar's room.
     local rows = math.max(shown, unlocked and 1 or 0)
     panel:SetHeight(math.max(1, rows * (BAR_H + SPACING) - SPACING))
+    -- Clamped only while you drag it; locked, being pushed back on screen would move the bottom.
+    if panel.SetClampedToScreen then panel:SetClampedToScreen(unlocked) end
     if unlocked then
         header:Show()
         panel:SetBackdropColor(0, 0.4, 1, 0.2)
