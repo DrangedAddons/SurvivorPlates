@@ -10,7 +10,7 @@ SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") 
 
 SP.defaults = {
     -- Stacking
-    stackMode = "spread", -- "spread" (the game's own layout) or "stack" (columns)
+    stackMode = "spread", -- "spread" (the game's own layout), "stack" (columns) or "collapse" (one plate per pile)
     stackGap = 2,
     stackOverlap = 30, -- % of the narrower plate's width two plates must share to join a column
     stackKeep = true, -- a plate that joins a column stays in it until its plate goes away
@@ -40,7 +40,7 @@ SP.defaults = {
 local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true }
 
 local CHOICES = {
-    stackMode = { "spread", "stack" },
+    stackMode = { "spread", "stack", "collapse" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
@@ -50,6 +50,8 @@ local db -- this character's settings
 local plates = {} -- plate -> data (SurvivorsDragonUi's per-plate table)
 -- Skin offsets from the game's position, in screen pixels: current and wanted.
 local offX, offY, wantX, wantY = {}, {}, {}, {}
+-- Collapse mode: plates hidden inside a pile, and the pile size shown on its visible plate.
+local pileHidden, pileCount = {}, {}
 local installed, warned = false, false
 local BASE_TEXT_OFFSET = 2.5 -- SurvivorsDragonUi's name gap above the bar
 
@@ -146,6 +148,11 @@ local function CreateExtras(data)
     sp.health:SetJustifyH("RIGHT")
     sp.health:SetPoint("RIGHT", style.health, "RIGHT", -2, 0)
     sp.health:SetTextColor(1, 1, 1, 1)
+    -- Collapse mode's pile size, just right of the bar.
+    sp.count = overlay:CreateFontString(nil, "OVERLAY")
+    sp.count:SetJustifyH("LEFT")
+    sp.count:SetPoint("LEFT", style.health, "RIGHT", 3, 0)
+    sp.count:SetTextColor(1, 0.82, 0, 1)
     -- Target highlight: four 1px gold edges just outside the bar's black border.
     sp.edges = {}
     for i = 1, 4 do
@@ -181,6 +188,7 @@ local function ApplyLayout(data)
     style.visual:SetHeight(db.height)
     SetFont(style.name, db.fontSize)
     SetFont(sp.health, db.fontSize)
+    SetFont(sp.count, db.fontSize + 2)
     style.name:ClearAllPoints()
     if db.namePos == "inside" then
         style.name:SetPoint("CENTER", style.health, "CENTER", 0, 0)
@@ -232,6 +240,7 @@ local function ApplyLive(plate, data)
 
     local alpha = 1
     if db.fadeOthers and UnitExists("target") and not isTarget then alpha = db.otherAlpha end
+    if pileHidden[plate] then alpha = 0 end
     if math.abs(style.visual:GetAlpha() - alpha) > 0.001 then style.visual:SetAlpha(alpha) end
 
     local showEdge = isTarget and db.targetHighlight
@@ -243,6 +252,8 @@ local function ApplyLive(plate, data)
     end
     local text = HealthString(data)
     if sp.health:GetText() ~= text then sp.health:SetText(text) end
+    local count = pileCount[plate] and ("x" .. pileCount[plate]) or ""
+    if sp.count:GetText() ~= count then sp.count:SetText(count) end
 end
 
 function SP.RestyleAll()
@@ -289,11 +300,84 @@ end
 --  * Members keep their order, so a column never reorders itself; new plates go on top.
 local STICK_TIME, ROWS_PER_WIDTH = 3.0, 6
 local live, byPlate, order, joinedAt, memberName = {}, {}, {}, {}, {}
+
+-- Collapse mode. Mobs in this game never unpile once they've piled up, so a pile is
+-- remembered until its mobs die: membership never expires and ignores the camera.
+--  * A free plate joins a pile of mobs with the same name when it overlaps any member
+--    sideways by at least `stackOverlap` % and is within reach of it. Bosses and guardians
+--    never pile.
+--  * Each pile shows one plate (the target, if it's in the pile, else the oldest member)
+--    with a count; the rest are hidden and can't be clicked.
+local function ComputePiles(n, share)
+    local piles = {}
+    for _, list in pairs(order) do
+        local pile
+        for i = 1, table.getn(list) do
+            local e = byPlate[list[i]]
+            -- The game reuses plate frames: a frame now showing another mob starts afresh.
+            if e and e.name ~= memberName[e.plate] then e = nil end
+            if e and not e.taken then
+                if pile then table.insert(pile, e) else pile = { e } end
+                e.taken = true
+            end
+        end
+        if pile then table.insert(piles, pile) end
+    end
+    table.sort(live, function(a, b) return a.y < b.y end)
+    for i = 1, n do
+        local e = live[i]
+        if not e.taken then
+            local best, bestD
+            if e.name and not bigNames[e.name] then
+                for j = 1, table.getn(piles) do
+                    local pile = piles[j]
+                    if pile[1].name == e.name then
+                        for k = 1, table.getn(pile) do
+                            local m = pile[k]
+                            local dx, dy = math.abs(e.x - m.x), math.abs(e.y - m.y)
+                            if (e.w + m.w) * 0.5 - dx >= share * math.min(e.w, m.w) and dy <= e.reach
+                                and (not bestD or dx + dy < bestD) then
+                                best, bestD = pile, dx + dy
+                            end
+                        end
+                    end
+                end
+            end
+            if best then table.insert(best, e) else table.insert(piles, { e }) end
+            e.taken = true
+        end
+    end
+    for k in pairs(order) do order[k] = nil end
+    for j = 1, table.getn(piles) do
+        local pile = piles[j]
+        local count = table.getn(pile)
+        local shown = pile[1]
+        for k = 2, count do
+            if IsTarget(pile[k].plate, plates[pile[k].plate]) then shown = pile[k] end
+        end
+        local list = {}
+        for k = 1, count do
+            local e = pile[k]
+            list[k] = e.plate
+            memberName[e.plate] = e.name
+            if e ~= shown then pileHidden[e.plate] = true end
+        end
+        if count > 1 then pileCount[shown.plate] = count end
+        order[pile[1].plate] = list
+    end
+end
+
+local lastMode
 local function ComputeStack()
-    for _, t in ipairs({ wantX, wantY }) do
+    for _, t in ipairs({ wantX, wantY, pileHidden, pileCount }) do
         for k in pairs(t) do t[k] = nil end
     end
-    local stacking = db.stackMode == "stack" and (not db.combatOnly or UnitAffectingCombat("player"))
+    -- Columns and piles share `order`, so a mode change starts it afresh.
+    if lastMode ~= db.stackMode then
+        for k in pairs(order) do order[k] = nil end
+        lastMode = db.stackMode
+    end
+    local stacking = db.stackMode ~= "spread" and (not db.combatOnly or UnitAffectingCombat("player"))
     if not stacking then
         for k in pairs(order) do order[k] = nil end
         return
@@ -331,6 +415,10 @@ local function ComputeStack()
     for i = n + 1, table.getn(live) do live[i] = nil end
     local now = GetTime()
     local share = db.stackOverlap / 100
+    if db.stackMode == "collapse" then
+        ComputePiles(n, share)
+        return
+    end
     local cols = {}
 
     -- Last pass's columns first, in their old order, keeping the members that still belong.
@@ -438,6 +526,15 @@ local function OnUpdate()
                 Anchor(plate, data, nx, ny)
                 data.spAnchored, data.spEff = true, eff
             end
+            -- A plate hidden in a pile mustn't be an invisible click target.
+            local hidden = pileHidden[plate] and not data.presentationMasked
+            if hidden and not data.spClickOff then
+                plate:SetHitRectInsets(1000000, 1000000, 1000000, 1000000)
+                data.spClickOff, data.spInsetX, data.spInsetY = true, nil, nil
+            elseif not hidden and data.spClickOff then
+                plate:SetHitRectInsets(0, 0, 0, 0)
+                data.spClickOff, data.spAnchored = false, false
+            end
             if SP.debug then SP.ShowMarker(plate, data) end
         end
     end
@@ -541,10 +638,11 @@ function SP.IsInstalled() return installed end
 
 -- How many plates the last stacking pass saw, how many it moved, and the biggest move.
 function SP.StackStats()
-    local seen, moved, most = 0, 0, 0
+    local seen, moved, most, hidden = 0, 0, 0, 0
     for plate, data in pairs(plates) do
         if plate:IsShown() and data.style and data.style.visual:IsShown() then
             seen = seen + 1
+            if pileHidden[plate] then hidden = hidden + 1 end
             local dx, dy = wantX[plate] or 0, wantY[plate] or 0
             local d = math.sqrt(dx * dx + dy * dy)
             if d > 0.5 then
@@ -553,7 +651,7 @@ function SP.StackStats()
             end
         end
     end
-    return seen, moved, math.floor(most + 0.5)
+    return seen, moved, math.floor(most + 0.5), hidden
 end
 function SP.PlateCount()
     local shown, all = 0, 0

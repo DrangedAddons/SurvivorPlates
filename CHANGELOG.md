@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+- **Collapse piles** mode. Mobs of the same kind that pile up share one plate with a count, like "Gurubashi Scout x12". The rest of the pile's plates are hidden and can't be clicked.
+  - A plate joins a pile of the same mob when it overlaps one of the pile's plates sideways by at least the set amount and is close by. Bosses and guardians never pile.
+  - Piles are kept until their mobs die. Mobs in this game don't unpile, so moving the camera doesn't break piles up or reshuffle them.
+  - The pile shows your target's plate if your target is in it, so the gold border and target scale still work. Otherwise it shows the pile's oldest plate.
+- "Sideways overlap to join a column" is now **Sideways overlap to join**, since it's used for piles too.
+- The window's corner and `/asp status` show how many plates are hidden in piles.
+
 ## 0.3.4
 - **Plates stay in their column** (on by default): once a plate joins a column it stays there until the mob dies or its plate disappears, however far the mob wanders. "Leave a column beyond" only applies with this unticked.
 - A plate frame the game reuses for a different mob no longer inherits the old mob's place in a column.
