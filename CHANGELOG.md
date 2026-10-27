@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.14.2
+- Removed **Only form piles in combat**. You're always fighting in this game, and the game doesn't report combat the way the option expected, so ticking it just switched piles off. Piles are always on while Collapse piles or the pile bars are.
+
 ## 0.14.1
 - **Vertical offset** fixes:
   - The label no longer runs into the value.

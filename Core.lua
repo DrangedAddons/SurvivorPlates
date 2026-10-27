@@ -17,7 +17,6 @@ SP.defaults = {
     -- Stacking
     stackMode = "spread", -- "spread" (the game's own layout) or "collapse" (one plate per pile)
     stackOverlap = 30, -- lower lets a pile pick up same-mob plates from further to the side
-    combatOnly = false,
     -- Size
     width = 100,
     height = 10,
@@ -85,6 +84,7 @@ local function LoadSettings()
     for k, v in pairs(SP.defaults) do
         if db[k] == nil then db[k] = v end
     end
+    db.combatOnly = nil -- removed in 0.14.2
     -- Drop a choice value an older version saved that this one doesn't know.
     for k, list in pairs(CHOICES) do
         local ok = false
@@ -436,7 +436,7 @@ local function ComputeCollapse()
         lastMode = db.stackMode
     end
     -- Piles feed both Collapse mode and the pile bars; with neither on there's nothing to do.
-    if (db.stackMode ~= "collapse" and not db.pileBars) or (db.combatOnly and not UnitAffectingCombat("player")) then
+    if db.stackMode ~= "collapse" and not db.pileBars then
         for k in pairs(order) do order[k] = nil end
         return
     end

@@ -22,7 +22,6 @@ There's no overlap mode. The game spreads its plates before any addon sees them,
   - A plate only leaves its pile when its mob dies. A plate the game hides for a moment (off screen, out of range) keeps its place for a minute.
   - Bosses and guardians are never piled.
   - **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
-  - **Only form piles in combat.**
 - **Order:** bosses and guardians are pinned nearest the fixed edge with a skull (white boss, red final boss, gold guardian). After them, bars go by the pile's total health, most first. Two piles only swap once one has 15% more health, so the order stays steady.
 - **Placement:**
   - **Position:** **Where you drag it** (untick **Lock pile bars** to move it), **Above your character** or **Below your character**. The camera keeps your character in the middle of the screen, so above or below means a set offset from the middle.
