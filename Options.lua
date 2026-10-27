@@ -2,7 +2,7 @@
 local SP = SurvivorPlates
 
 local LABELS = {
-    stack = "Stack", overlap = "Overlap",
+    spread = "Spread (game default)", stack = "Stack in columns",
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
 }
@@ -178,8 +178,8 @@ local function Build()
     Heading(frame, "Stacking", L, -44)
     Cycle(frame, "stackMode", "Mode", L, -66)
     Slider(frame, "stackGap", "Gap between plates", 0, 20, 1, L, -116, " px")
-    Slider(frame, "stackOverlap", "Overlap before they stack", 0, 100, 5, L, -156, "%")
-    Slider(frame, "stackMax", "Highest stack", 1, 30, 1, L, -196, " rows")
+    Slider(frame, "stackOverlap", "Sideways overlap to join a column", 0, 100, 5, L, -156, "%")
+    Slider(frame, "stackMax", "Most plates in a column", 1, 30, 1, L, -196)
     Slider(frame, "stackSpeed", "Movement speed (0 = instant)", 0, 30, 1, L, -236)
     Check(frame, "clampTop", "Keep stacks on screen", L, -268)
     Check(frame, "combatOnly", "Only stack in combat", L, -292)
@@ -217,7 +217,7 @@ local function Build()
         sinceStatus = 0
         if SP.IsInstalled() then
             local seen, pushed = SP.StackStats()
-            frame.status:SetText(seen .. " plates, " .. pushed .. " stacked")
+            frame.status:SetText(seen .. " plates, " .. pushed .. " moved")
         end
     end)
 end
@@ -227,7 +227,7 @@ function SP.RefreshOptions()
     for i = 1, table.getn(widgets) do widgets[i].Refresh() end
     if SP.IsInstalled() then
         local seen, pushed = SP.StackStats()
-        frame.status:SetText(seen .. " plates, " .. pushed .. " stacked")
+        frame.status:SetText(seen .. " plates, " .. pushed .. " moved")
     else
         frame.status:SetText("|cffff5555not hooked|r")
     end
@@ -257,7 +257,7 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
         local seen, pushed, most = SP.StackStats()
         SP.Print("v" .. SP.version .. ", " .. (SP.IsInstalled() and "hooked into SurvivorsDragonUi" or "NOT hooked")
             .. ", " .. shown .. " of " .. all .. " known plates shown. Stacking: " .. SP.Get("stackMode")
-            .. ", " .. pushed .. " of " .. seen .. " pushed up, highest push " .. most .. " px.")
+            .. ", " .. pushed .. " of " .. seen .. " moved into columns, biggest move " .. most .. " px.")
         if SP.updateError then SP.Print("last placement error: " .. tostring(SP.updateError)) end
     else
         SP.ToggleOptions()

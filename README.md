@@ -7,10 +7,12 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 ## Settings
 
 **Stacking**
-- **Mode:** Stack moves overlapping plates upward so you can read each one. Overlap leaves them where the game puts them.
-- **Gap between plates**, **Overlap before they stack** (how much two plates must overlap sideways), **Highest stack** and **Movement speed** (0 jumps straight to place).
+- **Mode:** **Spread** (the default) leaves plates where the game puts them. The game already spreads them so they never overlap. **Stack in columns** lines up plates that overlap sideways into tidy columns, packed right on top of each other.
+- **Gap between plates**, **Sideways overlap to join a column**, **Most plates in a column** and **Movement speed** (0 jumps straight to place).
 - **Keep stacks on screen**, **Only stack in combat**.
-- **Click area follows the plate:** clicking a stacked plate targets its mob.
+- **Click area follows the plate:** clicking a moved plate targets its mob.
+
+There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.
 
 **Size:** width, height, scale, font size, name position (above, inside, hidden), health text.
 

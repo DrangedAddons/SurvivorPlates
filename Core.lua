@@ -1,7 +1,8 @@
 -- SurvivorPlates: size, stacking and target options for SurvivorsDragonUi's nameplates.
 -- SurvivorsDragonUi draws each enemy plate as a skin frame (data.style.visual) centred
--- on the native plate's health bar. The game keeps positioning the native plates; this
--- addon only resizes the skin and offsets it upward so overlapping plates stack.
+-- on the native plate's health bar. The game positions the native plates, and already
+-- spreads them so their 32 px frames never overlap ("Spread"). This addon resizes the skin
+-- and, in Stack mode, moves skins that overlap sideways into tidy columns.
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
@@ -9,10 +10,10 @@ SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") 
 
 SP.defaults = {
     -- Stacking
-    stackMode = "stack", -- "stack" or "overlap"
+    stackMode = "spread", -- "spread" (the game's own layout) or "stack" (columns)
     stackGap = 2,
-    stackOverlap = 10, -- % of the narrower plate's width two plates must share to collide
-    stackMax = 10, -- highest a plate may be pushed, in plate rows
+    stackOverlap = 30, -- % of the narrower plate's width two plates must share to join a column
+    stackMax = 10, -- most plates in one column; the rest start a new one
     stackSpeed = 12, -- 0 = jump straight to place
     clampTop = true,
     combatOnly = false,
@@ -37,7 +38,7 @@ SP.defaults = {
 local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true }
 
 local CHOICES = {
-    stackMode = { "stack", "overlap" },
+    stackMode = { "spread", "stack" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
@@ -45,8 +46,8 @@ SP.choices = CHOICES
 
 local db -- this character's settings
 local plates = {} -- plate -> data (SurvivorsDragonUi's per-plate table)
-local offsets = {} -- plate -> current stack offset in screen pixels
-local targets = {} -- plate -> wanted stack offset in screen pixels
+-- Skin offsets from the game's position, in screen pixels: current and wanted.
+local offX, offY, wantX, wantY = {}, {}, {}, {}
 local installed, warned = false, false
 local BASE_TEXT_OFFSET = 2.5 -- SurvivorsDragonUi's name gap above the bar
 
@@ -85,8 +86,9 @@ function SP.Set(key, value)
     db[key] = value
     -- A mode change snaps every plate to its new place instead of gliding there.
     if key == "stackMode" then
-        for k in pairs(offsets) do offsets[k] = nil end
-        for k in pairs(targets) do targets[k] = nil end
+        for _, t in ipairs({ offX, offY, wantX, wantY }) do
+            for k in pairs(t) do t[k] = nil end
+        end
     end
     SP.RestyleAll()
 end
@@ -252,28 +254,37 @@ end
 
 -- Stacking ---------------------------------------------------------------------------
 
-local function Anchor(plate, data, offset)
+local function Anchor(plate, data, dx, dy)
     local style = data.style
     local eff = style.visual:GetEffectiveScale()
     style.visual:ClearAllPoints()
-    style.visual:SetPoint("CENTER", data.bar, "CENTER", 0, offset / eff)
-    -- Move the click area up with the skin, so clicking a stacked plate targets its mob.
+    style.visual:SetPoint("CENTER", data.bar, "CENTER", dx / eff, dy / eff)
+    -- Move the click area with the skin, so clicking a stacked plate targets its mob.
     -- SurvivorsDragonUi's hidden-plate mode sets its own insets, so stay out of its way then.
     if db.moveClicks and not data.presentationMasked then
-        local d = offset / plate:GetEffectiveScale()
-        if data.spInset ~= d then
-            plate:SetHitRectInsets(0, 0, -d, d)
-            data.spInset = d
+        local ps = plate:GetEffectiveScale()
+        local ix, iy = dx / ps, dy / ps
+        if data.spInsetX ~= ix or data.spInsetY ~= iy then
+            plate:SetHitRectInsets(ix, -ix, -iy, iy)
+            data.spInsetX, data.spInsetY = ix, iy
         end
-    elseif data.spInset and data.spInset ~= 0 and not data.presentationMasked then
-        plate:SetHitRectInsets(0, 0, 0, 0)
-        data.spInset = 0
+    elseif (data.spInsetX or 0) ~= 0 or (data.spInsetY or 0) ~= 0 then
+        if not data.presentationMasked then
+            plate:SetHitRectInsets(0, 0, 0, 0)
+            data.spInsetX, data.spInsetY = 0, 0
+        end
     end
 end
 
-local live, placed = {}, {}
+-- Stack mode: walk the plates bottom-up. A plate that shares at least `stackOverlap` % of
+-- its width with a column, and sits within reach of that column's top plate, joins the
+-- column: lined up on the column's x and packed right on top of it. Anything else starts
+-- a new column where the game put it.
+local live, columns = {}, {}
 local function ComputeStack()
-    for k in pairs(targets) do targets[k] = nil end
+    for _, t in ipairs({ wantX, wantY }) do
+        for k in pairs(t) do t[k] = nil end
+    end
     local stacking = db.stackMode == "stack" and (not db.combatOnly or UnitAffectingCombat("player"))
     if not stacking then return end
     local n = 0
@@ -283,7 +294,6 @@ local function ComputeStack()
             local anchor = data.bar
             local x, y = anchor:GetCenter()
             if not x then
-                -- Positions only matter relative to each other, so the plate's own centre will do.
                 anchor = plate
                 x, y = plate:GetCenter()
             end
@@ -296,42 +306,44 @@ local function ComputeStack()
                 local e = live[n] or {}
                 live[n] = e
                 e.plate, e.x, e.y, e.w, e.h = plate, x * bs, y * bs, db.width * eff, h
+                -- The game spreads its plate frames a frame's height apart, so a plate one
+                -- or two of those above the column's top is still part of the same pile.
+                e.reach = 2.5 * (plate:GetHeight() or 32) * plate:GetEffectiveScale()
             end
         end
     end
     for i = n + 1, table.getn(live) do live[i] = nil end
-    -- Lowest on screen first: those are usually nearest, and they keep their place.
     table.sort(live, function(a, b) return a.y < b.y end)
     local screenTop = UIParent:GetTop() * UIParent:GetEffectiveScale()
     local share = db.stackOverlap / 100
-    local m = 0
+    local c = 0
     for i = 1, n do
         local e = live[i]
-        local y = e.y
-        local limit = e.y + db.stackMax * (e.h + db.stackGap)
-        -- `placed` is kept sorted by final y, so one upward pass finds every collision.
-        for j = 1, m do
-            local p = placed[j]
-            -- Collide when they share at least `share` of the narrower plate's width.
-            local reach = (e.w + p.w) * 0.5 - share * math.min(e.w, p.w)
-            if math.abs(e.x - p.x) < reach and y < p.top + db.stackGap and y + e.h + db.stackGap > p.fy then
-                y = p.top + db.stackGap
+        local best, bestDx
+        for j = 1, c do
+            local col = columns[j]
+            local top = col.top
+            local dx = math.abs(e.x - col.x)
+            local shared = (e.w + col.w) * 0.5 - dx
+            if col.count < db.stackMax and shared >= share * math.min(e.w, col.w)
+                and e.y - top.y <= e.reach and (not bestDx or dx < bestDx) then
+                local fy = top.fy + (top.h + e.h) * 0.5 + db.stackGap
+                if not db.clampTop or fy + e.h * 0.5 <= screenTop - 4 then best, bestDx = col, dx end
             end
         end
-        if y > limit then y = limit end
-        if db.clampTop and y + e.h > screenTop - 4 then y = math.max(e.y, screenTop - 4 - e.h) end
-        e.fy, e.top = y, y + e.h
-        -- Insert into placed, keeping it sorted by final y.
-        local k = m + 1
-        while k > 1 and placed[k - 1].fy > y do
-            placed[k] = placed[k - 1]
-            k = k - 1
+        if best then
+            e.fx, e.fy = best.x, best.top.fy + (best.top.h + e.h) * 0.5 + db.stackGap
+            best.top, best.count = e, best.count + 1
+        else
+            e.fx, e.fy = e.x, e.y
+            c = c + 1
+            local col = columns[c] or {}
+            columns[c] = col
+            col.x, col.w, col.top, col.count = e.x, e.w, e, 1
         end
-        placed[k] = e
-        m = m + 1
-        targets[e.plate] = y - e.y
+        wantX[e.plate], wantY[e.plate] = e.fx - e.x, e.fy - e.y
     end
-    for i = m + 1, table.getn(placed) do placed[i] = nil end
+    for i = c + 1, table.getn(columns) do columns[i] = nil end
 end
 
 local sinceStack = 0
@@ -346,19 +358,20 @@ local function OnUpdate()
     local rate = db.stackSpeed > 0 and math.min(1, dt * db.stackSpeed) or 1
     for plate, data in pairs(plates) do
         if not plate:IsShown() then
-            -- A recycled plate starts unstacked, then glides to its place.
-            offsets[plate] = 0
+            -- A recycled plate starts where the game puts it, then glides to its place.
+            offX[plate], offY[plate] = 0, 0
             data.spAnchored = false
         elseif data.style then
-            local want = targets[plate] or 0
-            local cur = offsets[plate] or 0
-            local nextOffset = cur + (want - cur) * rate
-            if math.abs(want - nextOffset) < 0.5 then nextOffset = want end
-            -- The offset is set in the skin's own units, so a scale change (targeting) re-anchors too.
+            local tx, ty = wantX[plate] or 0, wantY[plate] or 0
+            local cx, cy = offX[plate] or 0, offY[plate] or 0
+            local nx, ny = cx + (tx - cx) * rate, cy + (ty - cy) * rate
+            if math.abs(tx - nx) < 0.5 then nx = tx end
+            if math.abs(ty - ny) < 0.5 then ny = ty end
+            -- Offsets are set in the skin's own units, so a scale change (targeting) re-anchors too.
             local eff = data.style.visual:GetEffectiveScale()
-            if nextOffset ~= cur or not data.spAnchored or data.spEff ~= eff then
-                offsets[plate] = nextOffset
-                Anchor(plate, data, nextOffset)
+            if nx ~= cx or ny ~= cy or not data.spAnchored or data.spEff ~= eff then
+                offX[plate], offY[plate] = nx, ny
+                Anchor(plate, data, nx, ny)
                 data.spAnchored, data.spEff = true, eff
             end
             if SP.debug then SP.ShowMarker(plate, data) end
@@ -462,20 +475,21 @@ end)
 
 function SP.IsInstalled() return installed end
 
--- How many plates the last stacking pass saw, how many it pushed up, and the biggest push.
+-- How many plates the last stacking pass saw, how many it moved, and the biggest move.
 function SP.StackStats()
-    local seen, pushed, most = 0, 0, 0
+    local seen, moved, most = 0, 0, 0
     for plate, data in pairs(plates) do
         if plate:IsShown() and data.style and data.style.visual:IsShown() then
             seen = seen + 1
-            local t = targets[plate] or 0
-            if t > 0.5 then
-                pushed = pushed + 1
-                if t > most then most = t end
+            local dx, dy = wantX[plate] or 0, wantY[plate] or 0
+            local d = math.sqrt(dx * dx + dy * dy)
+            if d > 0.5 then
+                moved = moved + 1
+                if d > most then most = d end
             end
         end
     end
-    return seen, pushed, math.floor(most + 0.5)
+    return seen, moved, math.floor(most + 0.5)
 end
 function SP.PlateCount()
     local shown, all = 0, 0

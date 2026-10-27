@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+- **New modes.** Mode is now **Spread** or **Stack in columns**.
+  - **Spread** (the default) leaves plates where the game puts them. The game already spreads its plates so they never overlap.
+  - **Stack in columns:** a plate that overlaps a nearby plate sideways by at least the set amount lines up with it in a tidy column, packed right on top. Other plates stay where the game put them.
+- The old "Overlap" mode is gone. It couldn't do what it said: the game spreads plates before any addon sees them, and gives addons no way to find where the mob's head really is. A real overlap mode needs a change in the game itself.
+- Settings renamed to match: **Sideways overlap to join a column** (default 30%) and **Most plates in a column**. Characters that were on Overlap are now on Spread.
+- The window and `/asp status` report how many plates were moved, instead of pushed up.
+
 ## 0.2.2
 - Switching Mode now snaps every plate straight to its new place. Going to Overlap drops all stacking at once instead of gliding down.
 - `/asp debug` puts a cyan dot where the game places each plate. In Overlap mode every plate should sit on its dot; a plate above its dot has been moved by stacking.
