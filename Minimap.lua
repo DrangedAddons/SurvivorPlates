@@ -19,14 +19,16 @@ background:SetWidth(20)
 background:SetHeight(20)
 background:SetPoint("CENTER", button, "CENTER", 0, 0)
 local icon = button:CreateTexture(nil, "ARTWORK")
--- Hunter's Mark: a marked target, for a nameplate addon.
-if not icon:SetTexture("Interface\\Icons\\Ability_Hunter_SniperShot") then
+-- The addon's logo (tools/make_logo.py). The crop trims the logo's own gold ring, since the
+-- minimap border already draws one. Hunter's Mark if the client won't load the .tga.
+if not icon:SetTexture("Interface\\AddOns\\SurvivorPlates\\icon")
+    and not icon:SetTexture("Interface\\Icons\\Ability_Hunter_SniperShot") then
     icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 end
+icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 icon:SetWidth(20)
 icon:SetHeight(20)
 icon:SetPoint("CENTER", button, "CENTER", 0, 0)
-icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 local border = button:CreateTexture(nil, "OVERLAY")
 border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 border:SetWidth(54)

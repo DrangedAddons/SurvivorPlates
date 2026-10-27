@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.16.1
+- **New logo:** the game's own boss skull above three pile bars. It's the minimap button icon and the addon's icon in the DrangedAddons manager.
+
 ## 0.16.0
 - **Recent damage strip on pile bars.** A thin strip along the bottom of each pile bar shows who's been hitting that mob over the last 10 seconds, split by each player's share in class colours, biggest share on the left. It measures damage dealt, so mobs joining the pile or dying don't throw it off. It disappears when nobody has hit that mob for 10 seconds.
   - Mobs with the same name share a strip, because the combat log names the mob, not which one.

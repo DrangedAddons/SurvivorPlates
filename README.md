@@ -1,5 +1,7 @@
 # SurvivorPlates
 
+<img src="tools/logo.png" width="160" alt="SurvivorPlates logo: the game's boss skull above three pile bars">
+
 An [Azeroth Survivors](https://discord.gg/azerothsurvivors) addon. It's a companion to **SurvivorsDragonUi** that adds nameplate settings: collapsing piles of mobs into one plate, size, and target highlighting.
 
 Click the minimap button or type `/asp` in game to open the settings. Every change shows at once.
