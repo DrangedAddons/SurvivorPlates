@@ -199,7 +199,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(660)
+    frame:SetHeight(690)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
