@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+- **Touch to join.** A plate that touches or overlaps any plate in a pile joins it immediately, whatever the mob. Piles that touch each other merge. The count includes every mob in the pile; the name shown is the visible plate's. Bosses and guardians still never pile.
+- The longer-range pick-up from 0.4.1 still applies, for plates of the same mob.
+
 ## 0.4.1
 - **Piles grab plates much more easily.** A plate joins a pile of the same mob from up to five of the game's plate rows away (was three). Sideways it only has to be within 1.2 plate widths of any pile member at the default 30% (lower the slider to grab from even further).
 - **Piles merge.** Two piles of the same mob that come within that reach of each other become one pile.

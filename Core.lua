@@ -306,6 +306,8 @@ local live, byPlate, order, joinedAt, memberName = {}, {}, {}, {}, {}
 --  * A free plate joins a pile of mobs with the same name when it's within PILE_ROWS of the
 --    game's plate rows of any member, and sideways within (1.5 - overlap) plate widths of it
 --    (1.2 widths at the default 30%). Bosses and guardians never pile.
+--  * Any plate that touches a pile member on screen joins it straight away, whatever the
+--    mob, and piles that touch each other merge.
 --  * Two piles of the same mob that come within that reach of each other merge.
 --  * A member only leaves when its mob dies. A plate the game hides for a while (off screen,
 --    out of range) keeps its place for GHOST_TIME and rejoins when it comes back.
@@ -317,6 +319,15 @@ local lastSeen = {}
 local function PileReach(e, m, share)
     return math.abs(e.x - m.x) <= (1.5 - share) * math.max(e.w, m.w)
         and math.abs(e.y - m.y) <= PILE_ROWS * math.max(e.row, m.row)
+end
+
+-- Two skins touching or overlapping on screen (2 px of slack).
+local function Touching(e, m)
+    return math.abs(e.x - m.x) <= (e.w + m.w) * 0.5 + 2 and math.abs(e.y - m.y) <= (e.h + m.h) * 0.5 + 2
+end
+
+local function Joins(e, m, sameMob, share)
+    return Touching(e, m) or (sameMob and PileReach(e, m, share))
 end
 
 local function ComputePiles(n, share)
@@ -349,10 +360,11 @@ local function ComputePiles(n, share)
             if e.name and not bigNames[e.name] then
                 for j = 1, table.getn(piles) do
                     local pile = piles[j]
-                    if pile.name == e.name then
+                    if not bigNames[pile.name or ""] then
+                        local sameMob = pile.name == e.name
                         for k = 1, table.getn(pile.live) do
                             local m = pile.live[k]
-                            if PileReach(e, m, share) then
+                            if Joins(e, m, sameMob, share) then
                                 local d = math.abs(e.x - m.x) + math.abs(e.y - m.y)
                                 if not bestD or d < bestD then best, bestD = pile, d end
                             end
@@ -374,11 +386,12 @@ local function ComputePiles(n, share)
         if pa.name and not bigNames[pa.name] and table.getn(pa.live) > 0 then
             for b = a + 1, table.getn(piles) do
                 local pb = piles[b]
-                if pb.name == pa.name and table.getn(pb.live) > 0 then
+                if not bigNames[pb.name or ""] and table.getn(pb.live) > 0 then
+                    local sameMob = pb.name == pa.name
                     local touch = false
                     for i = 1, table.getn(pa.live) do
                         for k = 1, table.getn(pb.live) do
-                            if not touch and PileReach(pa.live[i], pb.live[k], share) then touch = true end
+                            if not touch and Joins(pa.live[i], pb.live[k], sameMob, share) then touch = true end
                         end
                     end
                     if touch then
