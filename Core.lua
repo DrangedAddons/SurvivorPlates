@@ -6,9 +6,10 @@
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
--- This pass's piles of 2+ (every pile, singles too, while world plates are hidden):
+-- This pass's piles of 2+, plus bosses and guardians (every pile, singles too, while world
+-- plates are hidden):
 -- { id (the pile's first plate, stable while it lives), name, count, health (0-1 average),
---   hp (the members' bar values added up), target, boss }
+--   hp (the members' bar values added up), target, boss (nil, "boss", "final" or "guardian") }
 SP.pileList = {}
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
 
@@ -119,14 +120,15 @@ local function SetFont(label, size)
     end
 end
 
--- Bosses, final bosses and guardians, by name, from the game's unit list.
+-- Bosses, final bosses and guardians: name -> kind ("boss", "final" or "guardian"), from
+-- the game's unit list.
 local bigNames = {}
 local function RefreshBigNames()
     for k in pairs(bigNames) do bigNames[k] = nil end
     if type(AZS_UNITS) ~= "table" then return end
     for i = 1, table.getn(AZS_UNITS) do
         local u = AZS_UNITS[i]
-        if u.kind == "boss" or u.kind == "final" or u.kind == "guardian" then bigNames[u.name] = true end
+        if u.kind == "boss" or u.kind == "final" or u.kind == "guardian" then bigNames[u.name] = u.kind end
     end
 end
 
@@ -398,8 +400,8 @@ local function ComputePiles(n, share)
                 lastSeen[e.plate] = now
                 if e ~= shown or hideAll then pileHidden[e.plate] = true end
             end
-            if count > 1 or hideAll then
-                pileCount[shown.plate] = count
+            if count > 1 then pileCount[shown.plate] = count end
+            if count > 1 or hideAll or bigNames[shown.name or ""] then
                 -- For the pile bars: the pile's average health and its health added up, read
                 -- off each member's bar.
                 local sum, hp = 0, 0
