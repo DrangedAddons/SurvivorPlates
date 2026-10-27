@@ -248,12 +248,17 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
     elseif msg == "minimap" then
         SP.Set("minimapButton", not SP.Get("minimapButton"))
         SP.Print("minimap button " .. (SP.Get("minimapButton") and "shown." or "hidden. /asp minimap brings it back."))
+    elseif msg == "debug" then
+        SP.SetDebug(not SP.debug)
+        SP.Print(SP.debug and "debug on: a cyan dot marks where the game puts each plate. /asp debug turns it off."
+            or "debug off.")
     elseif msg == "status" then
         local shown, all = SP.PlateCount()
         local seen, pushed, most = SP.StackStats()
         SP.Print("v" .. SP.version .. ", " .. (SP.IsInstalled() and "hooked into SurvivorsDragonUi" or "NOT hooked")
             .. ", " .. shown .. " of " .. all .. " known plates shown. Stacking: " .. SP.Get("stackMode")
             .. ", " .. pushed .. " of " .. seen .. " pushed up, highest push " .. most .. " px.")
+        if SP.updateError then SP.Print("last placement error: " .. tostring(SP.updateError)) end
     else
         SP.ToggleOptions()
     end

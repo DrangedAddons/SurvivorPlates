@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+- Switching Mode now snaps every plate straight to its new place. Going to Overlap drops all stacking at once instead of gliding down.
+- `/asp debug` puts a cyan dot where the game places each plate. In Overlap mode every plate should sit on its dot; a plate above its dot has been moved by stacking.
+- If placing plates ever hits an error, SurvivorPlates now says so in chat (and in `/asp status`). Before, an error could quietly stop plates from moving.
+- `/asp debug` added to the README.
+
 ## 0.2.1
 - The settings window's top-right corner now shows how many plates are on screen and how many are stacked, updated live. It used to show a count from when the window opened.
 - `/asp status` also says how many plates were pushed up and the biggest push, to check whether stacking is doing anything.

@@ -22,7 +22,8 @@ Settings are per character.
 - `/asp`: open or close the settings
 - `/asp reset`: back to defaults
 - `/asp minimap`: show or hide the minimap button
-- `/asp status`: whether it's hooked into SurvivorsDragonUi, and how many plates it sees
+- `/asp status`: whether it's hooked into SurvivorsDragonUi, how many plates it sees and how many it stacked
+- `/asp debug`: a cyan dot where the game places each plate, to see what stacking moved
 
 ## Requirements
 SurvivorsDragonUi with its nameplate skin on. SurvivorPlates resizes and moves that skin, so it does nothing without it. If a SurvivorsDragonUi update changes how its plates are built, SurvivorPlates switches itself off and says so in chat.

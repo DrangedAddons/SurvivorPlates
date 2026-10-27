@@ -83,6 +83,11 @@ function SP.Get(key) return db[key] end
 
 function SP.Set(key, value)
     db[key] = value
+    -- A mode change snaps every plate to its new place instead of gliding there.
+    if key == "stackMode" then
+        for k in pairs(offsets) do offsets[k] = nil end
+        for k in pairs(targets) do targets[k] = nil end
+    end
     SP.RestyleAll()
 end
 
@@ -356,6 +361,35 @@ local function OnUpdate()
                 Anchor(plate, data, nextOffset)
                 data.spAnchored, data.spEff = true, eff
             end
+            if SP.debug then SP.ShowMarker(plate, data) end
+        end
+    end
+end
+
+-- /asp debug: a cyan dot where the game puts each plate's health bar. SurvivorPlates never
+-- moves the dot, so a skin sitting on its dot is unmoved, and one above it was stacked.
+function SP.ShowMarker(plate, data)
+    local mark = data.spMarker
+    if not mark then
+        mark = CreateFrame("Frame", nil, plate)
+        mark:SetFrameLevel(plate:GetFrameLevel() + 10)
+        mark:SetWidth(6)
+        mark:SetHeight(6)
+        mark:SetPoint("CENTER", data.bar, "CENTER", 0, 0)
+        local dot = mark:CreateTexture(nil, "OVERLAY")
+        dot:SetTexture("Interface\\Buttons\\WHITE8X8")
+        dot:SetVertexColor(0, 1, 1, 1)
+        dot:SetAllPoints(mark)
+        data.spMarker = mark
+    end
+    mark:Show()
+end
+
+function SP.SetDebug(on)
+    SP.debug = on
+    if not on then
+        for _, data in pairs(plates) do
+            if data.spMarker then data.spMarker:Hide() end
         end
     end
 end
@@ -417,7 +451,13 @@ events:SetScript("OnUpdate", function()
         SP.unitsDirty = false
         RefreshBigNames()
     end
-    OnUpdate()
+    -- An error here would stop every plate after the failing one from moving, every frame.
+    -- Report the first one in chat instead of failing silently.
+    local ok, err = pcall(OnUpdate)
+    if not ok and not SP.updateError then
+        SP.updateError = err
+        Print("|cffff5555error while placing plates:|r " .. tostring(err))
+    end
 end)
 
 function SP.IsInstalled() return installed end
