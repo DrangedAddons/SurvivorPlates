@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+- **Stickier columns.** Plates stopped bouncing between columns:
+  - Columns are remembered from one moment to the next instead of being rebuilt from scratch, and a column keeps its order. A new plate goes on top and never shuffles the others.
+  - Joining is easier: a plate can now join a column from up to three of the game's plate rows away (was two and a half).
+  - Leaving is harder: a plate stays in its column for at least a second after joining. After that it only leaves once it no longer touches the column sideways, or drifts twice as far away as it could join from.
+
 ## 0.3.0
 - **New modes.** Mode is now **Spread** or **Stack in columns**.
   - **Spread** (the default) leaves plates where the game puts them. The game already spreads its plates so they never overlap.

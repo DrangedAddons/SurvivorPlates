@@ -276,17 +276,25 @@ local function Anchor(plate, data, dx, dy)
     end
 end
 
--- Stack mode: walk the plates bottom-up. A plate that shares at least `stackOverlap` % of
--- its width with a column, and sits within reach of that column's top plate, joins the
--- column: lined up on the column's x and packed right on top of it. Anything else starts
--- a new column where the game put it.
-local live, columns = {}, {}
+-- Stack mode. Columns are remembered between passes, so they don't reshuffle every time
+-- the game nudges a plate:
+--  * Joining is easy: a free plate joins a column if it overlaps it sideways by at least
+--    `stackOverlap` % and sits within reach of the column's top plate.
+--  * Leaving is hard: a member stays for at least STICK_TIME after joining, and after that
+--    until it stops touching the column sideways or drifts twice as far as it could join from.
+--  * Members keep their order, so a column never reorders itself; new plates go on top.
+local STICK_TIME = 1.0
+local live, byPlate, order, joinedAt = {}, {}, {}, {}
 local function ComputeStack()
     for _, t in ipairs({ wantX, wantY }) do
         for k in pairs(t) do t[k] = nil end
     end
     local stacking = db.stackMode == "stack" and (not db.combatOnly or UnitAffectingCombat("player"))
-    if not stacking then return end
+    if not stacking then
+        for k in pairs(order) do order[k] = nil end
+        return
+    end
+    for k in pairs(byPlate) do byPlate[k] = nil end
     local n = 0
     for plate, data in pairs(plates) do
         local style = data.style
@@ -307,43 +315,90 @@ local function ComputeStack()
                 live[n] = e
                 e.plate, e.x, e.y, e.w, e.h = plate, x * bs, y * bs, db.width * eff, h
                 -- The game spreads its plate frames a frame's height apart, so a plate one
-                -- or two of those above the column's top is still part of the same pile.
-                e.reach = 2.5 * (plate:GetHeight() or 32) * plate:GetEffectiveScale()
+                -- to three of those above the column's top is still part of the same pile.
+                e.reach = 3 * (plate:GetHeight() or 32) * plate:GetEffectiveScale()
+                e.taken = false
+                byPlate[plate] = e
             end
         end
     end
     for i = n + 1, table.getn(live) do live[i] = nil end
-    table.sort(live, function(a, b) return a.y < b.y end)
-    local screenTop = UIParent:GetTop() * UIParent:GetEffectiveScale()
+    local now = GetTime()
     local share = db.stackOverlap / 100
-    local c = 0
-    for i = 1, n do
-        local e = live[i]
-        local best, bestDx
-        for j = 1, c do
-            local col = columns[j]
-            local top = col.top
-            local dx = math.abs(e.x - col.x)
-            local shared = (e.w + col.w) * 0.5 - dx
-            if col.count < db.stackMax and shared >= share * math.min(e.w, col.w)
-                and e.y - top.y <= e.reach and (not bestDx or dx < bestDx) then
-                local fy = top.fy + (top.h + e.h) * 0.5 + db.stackGap
-                if not db.clampTop or fy + e.h * 0.5 <= screenTop - 4 then best, bestDx = col, dx end
+    local cols = {}
+
+    -- Last pass's columns first, in their old order, keeping the members that still belong.
+    for _, list in pairs(order) do
+        local col
+        for i = 1, table.getn(list) do
+            local e = byPlate[list[i]]
+            if e and not e.taken then
+                if not col then
+                    col = { list = { e }, x = e.x, w = e.w }
+                    e.taken = true
+                elseif table.getn(col.list) < db.stackMax then
+                    local top = col.list[table.getn(col.list)]
+                    local touching = (e.w + col.w) * 0.5 - math.abs(e.x - col.x) >= 0
+                    local near = math.abs(e.y - top.y) <= 2 * e.reach
+                    if now - (joinedAt[e.plate] or 0) < STICK_TIME or (touching and near) then
+                        table.insert(col.list, e)
+                        e.taken = true
+                    end
+                end
             end
         end
-        if best then
-            e.fx, e.fy = best.x, best.top.fy + (best.top.h + e.h) * 0.5 + db.stackGap
-            best.top, best.count = e, best.count + 1
-        else
-            e.fx, e.fy = e.x, e.y
-            c = c + 1
-            local col = columns[c] or {}
-            columns[c] = col
-            col.x, col.w, col.top, col.count = e.x, e.w, e, 1
-        end
-        wantX[e.plate], wantY[e.plate] = e.fx - e.x, e.fy - e.y
+        if col then table.insert(cols, col) end
     end
-    for i = c + 1, table.getn(columns) do columns[i] = nil end
+
+    -- Then every free plate, bottom-up: join the closest column it overlaps enough, or start one.
+    table.sort(live, function(a, b) return a.y < b.y end)
+    for i = 1, n do
+        local e = live[i]
+        if not e.taken then
+            local best, bestDx
+            for j = 1, table.getn(cols) do
+                local col = cols[j]
+                local count = table.getn(col.list)
+                local top = col.list[count]
+                local dx = math.abs(e.x - col.x)
+                if count < db.stackMax
+                    and (e.w + col.w) * 0.5 - dx >= share * math.min(e.w, col.w)
+                    and math.abs(e.y - top.y) <= e.reach
+                    and (not bestDx or dx < bestDx) then
+                    best, bestDx = col, dx
+                end
+            end
+            if best then
+                table.insert(best.list, e)
+            else
+                table.insert(cols, { list = { e }, x = e.x, w = e.w })
+            end
+            e.taken = true
+            joinedAt[e.plate] = now
+        end
+    end
+
+    -- Remember the columns, and pack each one upward from its bottom plate.
+    for k in pairs(order) do order[k] = nil end
+    local screenTop = UIParent:GetTop() * UIParent:GetEffectiveScale()
+    for j = 1, table.getn(cols) do
+        local col = cols[j]
+        local plateList = {}
+        local prev
+        for i = 1, table.getn(col.list) do
+            local e = col.list[i]
+            plateList[i] = e.plate
+            if not prev then
+                e.fx, e.fy = e.x, e.y
+            else
+                e.fx, e.fy = col.x, prev.fy + (prev.h + e.h) * 0.5 + db.stackGap
+                if db.clampTop and e.fy + e.h * 0.5 > screenTop - 4 then e.fy = screenTop - 4 - e.h * 0.5 end
+            end
+            wantX[e.plate], wantY[e.plate] = e.fx - e.x, e.fy - e.y
+            prev = e
+        end
+        order[col.list[1].plate] = plateList
+    end
 end
 
 local sinceStack = 0
