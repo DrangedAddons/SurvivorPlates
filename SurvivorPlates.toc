@@ -2,7 +2,7 @@
 ## Title: SurvivorPlates
 ## Notes: Collapse piles of mobs into one nameplate, plus size and target options for SurvivorsDragonUi.
 ## Author: Dranged
-## Version: 0.16.1
+## Version: 0.17.0
 ## Dependencies: SurvivorsDragonUi
 ## SavedVariables: SurvivorPlatesDB
 

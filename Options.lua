@@ -6,6 +6,7 @@ local LABELS = {
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
     free = "Where you drag it", player = "Above your character", below = "Below your character",
+    window = "The last few minutes", pile = "As long as the pile is up",
     up = "Upward", down = "Downward",
 }
 
@@ -253,7 +254,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(690)
+    frame:SetHeight(700)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -326,6 +327,8 @@ local function Build()
     Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -382)
     Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -422)
     Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -460)
+    Cycle(frame, "pileShareMode", "Contribution strip measures", R, -490)
+    NudgeSlider(frame, "pileShareMins", "Minutes (the last few minutes)", 0.5, 30, 0.5, R, -538, " min")
 
     Check(frame, "minimapButton", "Show minimap button", L, -606)
 

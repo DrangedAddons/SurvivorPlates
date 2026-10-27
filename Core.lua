@@ -8,7 +8,7 @@ SurvivorPlates = {}
 local SP = SurvivorPlates
 -- This pass's piles of 2+, plus bosses and guardians (every pile, singles too, while world
 -- plates are hidden):
--- { id (the pile's first plate, stable while it lives), name, count, health (0-1 average),
+-- { id (the pile's uid, kept for the pile's whole life), name, count, health (0-1 average),
 --   hp (the members' bar values added up), target, boss (nil, "boss", "final" or "guardian") }
 SP.pileList = {}
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
@@ -42,6 +42,8 @@ SP.defaults = {
     pileBarsBelowY = -80, -- "below": the stack's top edge, px from the middle of the screen (+ is up)
     pileBarsGrow = "up", -- "free": "up" (fixed bottom, most health at the bottom) or "down" (the inverse)
     pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
+    pileShareMode = "window", -- contribution strip: "window" (the last pileShareMins) or "pile" (the pile's life)
+    pileShareMins = 0.5,
     worldPlates = true, -- false: hide every nameplate above the mobs, in any mode
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
@@ -53,6 +55,7 @@ local CHOICES = {
     stackMode = { "spread", "collapse" },
     pileBarsAnchor = { "free", "player", "below" },
     pileBarsGrow = { "up", "down" },
+    pileShareMode = { "window", "pile" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
@@ -307,6 +310,9 @@ local function Joins(e, m, sameMob, share)
     return Touching(e, m) or (sameMob and PileReach(e, m, share))
 end
 
+-- Each pile's uid: a merged pile keeps the uid of the pile it was merged into.
+local nextUid = 0
+
 local function ComputePiles(n, share)
     local now = GetTime()
     -- With the world plates hidden the pile bars list single mobs too, so nothing goes missing.
@@ -315,7 +321,7 @@ local function ComputePiles(n, share)
     local piles = {}
     -- Last pass's piles. `ghosts` are members the game has hidden for now.
     for _, list in pairs(order) do
-        local pile = { live = {}, ghosts = {} }
+        local pile = { live = {}, ghosts = {}, uid = list.uid }
         for i = 1, table.getn(list) do
             local plate = list[i]
             local e = byPlate[plate]
@@ -355,7 +361,8 @@ local function ComputePiles(n, share)
             if best then
                 table.insert(best.live, e)
             else
-                table.insert(piles, { live = { e }, ghosts = {}, name = e.name })
+                nextUid = nextUid + 1
+                table.insert(piles, { live = { e }, ghosts = {}, name = e.name, uid = nextUid })
             end
             e.taken = true
         end
@@ -388,7 +395,7 @@ local function ComputePiles(n, share)
     for j = 1, table.getn(piles) do
         local pile = piles[j]
         local count = table.getn(pile.live)
-        local list = {}
+        local list = { uid = pile.uid }
         if count > 0 then
             local shown = pile.live[1]
             for k = 2, count do
@@ -415,7 +422,7 @@ local function ComputePiles(n, share)
                         hp = hp + v
                     end
                 end
-                table.insert(SP.pileList, { id = pile.live[1].plate, name = shown.name or "?", count = count,
+                table.insert(SP.pileList, { id = pile.uid, name = shown.name or "?", count = count,
                     health = sum / count, hp = hp,
                     target = IsTarget(shown.plate, plates[shown.plate]), boss = bigNames[shown.name or ""] })
             end

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0
+- **Contribution strip measures:** choose what the class-coloured strip on pile bars covers.
+  - **The last few minutes**, set in **Minutes** (0.5 to 30, in half-minute steps; type it in the box or nudge it). Default is half a minute.
+  - **As long as the pile is up**: everything since that pile's bar first appeared.
+- Piles keep their identity for their whole life now, even when their oldest mob dies, so the strip and damage chunk don't reset mid-pile.
+
 ## 0.16.1
 - **New logo:** the game's own boss skull above three pile bars. It's the minimap button icon and the addon's icon in the DrangedAddons manager.
 

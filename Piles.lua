@@ -106,12 +106,15 @@ end
 
 local function ByAmount(a, b) return a.amount > b.amount end
 
--- Piles: who's been hitting each mob over the last RECENT seconds, in one-second buckets.
--- mob name -> { [second] = { [unit or "other"] = { amount, color } } }. Drawn as a thin
--- strip along the bottom of the pile's bar, split by each player's share. It measures damage
--- dealt, not health missing, so mobs joining and dying don't throw it off.
-local RECENT, STRIP_H = 10, 3
+-- Piles: who's been hitting each mob, in one-second buckets kept for KEEP seconds (the
+-- longest window). mob name -> { pruned = second, buckets = { [second] = { [unit or
+-- "other"] = { amount, color } } } }. Drawn as a thin strip along the bottom of the pile's
+-- bar, split by each player's share, over the last pileShareMins minutes or the pile's whole
+-- life. It measures damage dealt, not health missing, so mobs joining and dying don't throw
+-- it off.
+local KEEP, STRIP_H = 1800, 3
 local recentHits = {}
+local pileStart = {} -- pile id -> when its bar first showed
 
 local function AddRecentHit(target, source, amount)
     local color, unit = ColorOf(source)
@@ -119,16 +122,19 @@ local function AddRecentHit(target, source, amount)
     local now = math.floor(GetTime())
     local rec = recentHits[target]
     if not rec then
-        rec = {}
+        rec = { pruned = now, buckets = {} }
         recentHits[target] = rec
     end
-    for sec in pairs(rec) do
-        if now - sec >= RECENT then rec[sec] = nil end
+    if rec.pruned ~= now then
+        rec.pruned = now
+        for sec in pairs(rec.buckets) do
+            if now - sec >= KEEP then rec.buckets[sec] = nil end
+        end
     end
-    local bucket = rec[now]
+    local bucket = rec.buckets[now]
     if not bucket then
         bucket = {}
-        rec[now] = bucket
+        rec.buckets[now] = bucket
     end
     local e = bucket[key]
     if not e then
@@ -139,14 +145,22 @@ local function AddRecentHit(target, source, amount)
     e.color = color
 end
 
-local function DrawStrip(b, name)
-    local strip, segs = b.strip, b.stripSegs
-    local rec = recentHits[name]
-    local sums, parts, total = {}, {}, 0
+-- Each player's damage to a mob since a given second, biggest first. A long window can be
+-- a lot of buckets, so results are cached for the rest of the second.
+local shareCache, shareCacheAt = {}, nil
+local function Shares(name, since)
     local now = math.floor(GetTime())
+    if shareCacheAt ~= now then
+        shareCache, shareCacheAt = {}, now
+    end
+    local ck = name .. "@" .. since
+    local c = shareCache[ck]
+    if c then return c.parts, c.total end
+    local sums, parts, total = {}, {}, 0
+    local rec = recentHits[name]
     if rec then
-        for sec, bucket in pairs(rec) do
-            if now - sec < RECENT then
+        for sec, bucket in pairs(rec.buckets) do
+            if sec >= since then
                 for key, e in pairs(bucket) do
                     local sum = sums[key]
                     if not sum then
@@ -158,16 +172,27 @@ local function DrawStrip(b, name)
                     sum.color = e.color
                     total = total + e.amount
                 end
-            else
-                rec[sec] = nil
             end
         end
     end
+    table.sort(parts, ByAmount)
+    shareCache[ck] = { parts = parts, total = total }
+    return parts, total
+end
+
+local function DrawStrip(b, p)
+    local strip, segs = b.strip, b.stripSegs
+    local since
+    if SP.Get("pileShareMode") == "pile" then
+        since = math.floor(pileStart[p.id] or GetTime())
+    else
+        since = math.floor(GetTime()) - math.floor(SP.Get("pileShareMins") * 60) + 1
+    end
+    local parts, total = Shares(p.name, since)
     if total <= 0 then
         strip:Hide()
         return
     end
-    table.sort(parts, ByAmount)
     local inner = BAR_W - 2
     local x, n = 0, 0
     for i = 1, table.getn(parts) do
@@ -500,7 +525,7 @@ local function Refresh()
             for k = 1, table.getn(b.segs) do b.segs[k]:Hide() end
         end
         if not p.boss and SP.Get("pileDamageColors") then
-            DrawStrip(b, p.name)
+            DrawStrip(b, p)
         else
             b.strip:Hide()
         end
@@ -528,6 +553,12 @@ local function Refresh()
         bars[i].lagState = nil
     end
     lagOf = lags
+    -- When each pile's bar first showed, for "as long as the pile is up".
+    local starts, t = {}, GetTime()
+    for i = 1, table.getn(list) do
+        starts[list[i].id] = pileStart[list[i].id] or t
+    end
+    pileStart = starts
     -- Bosses on the bars now; forget a boss's damage once it's been gone a while.
     local now = GetTime()
     for i = 1, table.getn(list) do
