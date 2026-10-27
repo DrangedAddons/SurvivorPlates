@@ -17,6 +17,7 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 - **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Bosses and guardians are pinned to the bottom with a skull (white boss, red final boss, gold guardian). Above them, bars are ordered by the pile's total health, most at the bottom, and stack upward. Two piles only swap once one has 15% more health, so the order stays steady.
   - **Position:** **Where you drag it** (untick **Lock pile bars** to move it) or **Above your character**. The camera keeps your character in the middle of the screen, so above your character means a set height above the middle; **Height above your character** adjusts it.
   - **Show nameplates in the world:** untick it to hide every enemy plate in the world and use only the pile bars. The bars then list single mobs too.
+  - Damage taken shows as a pale gold chunk on the bar that holds for a moment, then drains away.
   - **Most pile bars** and **Pile bars scale** set its size.
 
 There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.

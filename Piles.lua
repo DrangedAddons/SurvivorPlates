@@ -43,6 +43,11 @@ local function Font(label, size)
     end
 end
 
+-- Damage chunk: a pale bar behind the health that holds where the health was for HOLD
+-- seconds after a hit, then drains down to it, so each hit shows how much it took off.
+local HOLD = 0.4
+local lagOf = {} -- pile id -> { v = where the pale bar is, last = health last refresh, hold }
+
 local bars = {}
 local function Bar(i)
     if bars[i] then return bars[i] end
@@ -56,7 +61,16 @@ local function Bar(i)
     bg:SetTexture("Interface\\Buttons\\WHITE8X8")
     bg:SetVertexColor(0, 0, 0, 0.8)
     bg:SetAllPoints(b)
+    local lag = CreateFrame("StatusBar", nil, b)
+    lag:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1)
+    lag:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
+    lag:SetStatusBarTexture(BAR_TEX)
+    lag:SetStatusBarColor(1, 0.9, 0.55)
+    lag:SetMinMaxValues(0, 1)
+    lag:EnableMouse(false)
+    lag:SetFrameLevel(b:GetFrameLevel() + 1)
     local health = CreateFrame("StatusBar", nil, b)
+    health:SetFrameLevel(b:GetFrameLevel() + 2)
     health:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1)
     health:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
     health:SetStatusBarTexture(BAR_TEX)
@@ -91,7 +105,7 @@ local function Bar(i)
     hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
     hl:SetAllPoints(b)
     hl:SetBlendMode("ADD")
-    b.health, b.name, b.count, b.edge, b.skull = health, name, count, edge, skull
+    b.health, b.name, b.count, b.edge, b.skull, b.lag = health, name, count, edge, skull, lag
     b:SetScript("OnClick", function()
         -- 1.12 has no unit token for a plate; target the nearest mob with this name.
         if this.mob then TargetByName(this.mob, true) end
@@ -183,8 +197,17 @@ local function Refresh()
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
     Order(list)
     local shown = math.min(table.getn(list), SP.Get("pileBarsMax"))
+    local lags = {}
     for i = 1, shown do
         local b, p = Bar(i), list[i]
+        -- The damage chunk follows its pile when bars reorder.
+        local s = lagOf[p.id] or { v = p.health, last = p.health, hold = 0 }
+        if p.health < s.last then s.hold = HOLD end -- a new hit: hold the chunk a bit longer
+        if p.health >= s.v then s.v = p.health end -- healed, or a hurt member died: no chunk
+        s.last = p.health
+        lags[p.id] = s
+        b.lagState, b.hp = s, p.health
+        b.lag:SetValue(s.v)
         b.mob = p.name
         b.name:SetText(p.name)
         if p.boss then
@@ -203,7 +226,11 @@ local function Refresh()
         b:EnableMouse(not unlocked)
         b:Show()
     end
-    for i = shown + 1, table.getn(bars) do bars[i]:Hide() end
+    for i = shown + 1, table.getn(bars) do
+        bars[i]:Hide()
+        bars[i].lagState = nil
+    end
+    lagOf = lags
     -- Keep the panel's size to its bars; unlocked and empty, it still shows one bar's room.
     local rows = math.max(shown, unlocked and 1 or 0)
     panel:SetHeight(math.max(1, rows * (BAR_H + SPACING) - SPACING))
@@ -222,8 +249,22 @@ end
 local since = 0
 local ticker = CreateFrame("Frame")
 ticker:SetScript("OnUpdate", function()
-    since = since + (arg1 or 0)
-    if since < 0.2 then return end
+    local dt = arg1 or 0
+    -- Drain the damage chunks every frame so they slide rather than step.
+    for i = 1, table.getn(bars) do
+        local b = bars[i]
+        local s = b.lagState
+        if s and s.v > b.hp then
+            if s.hold > 0 then
+                s.hold = s.hold - dt
+            else
+                s.v = math.max(b.hp, s.v - math.max((s.v - b.hp) * 5, 0.05) * dt)
+                b.lag:SetValue(s.v)
+            end
+        end
+    end
+    since = since + dt
+    if since < 0.1 then return end
     since = 0
     if SP.Ready() then Refresh() end
 end)

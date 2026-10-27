@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0
+- **Damage chunks on pile bars.** When a pile takes damage, the part of the bar it lost turns pale gold, holds for a moment, then drains down to the new health. Hits landing close together build one bigger chunk.
+- Pile bars refresh twice as often (every 0.1 s), so hits show sooner.
+
 ## 0.10.0
 - **Bosses and guardians are pinned to the bottom of the pile bars**, below every pile, with a skull on their bar: white for bosses, red for the final boss, gold for guardians. They're listed even on their own, so they're always there while they're on screen.
 - Among themselves they're ordered by health like the piles.
