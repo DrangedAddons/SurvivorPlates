@@ -49,6 +49,45 @@ end
 local HOLD = 0.4
 local lagOf = {} -- pile id -> { v = where the pale bar is, last = health last refresh, hold }
 
+-- Who's hitting what, read from the combat log: mob name -> { source name -> damage },
+-- reset when that mob has gone DAMAGE_WINDOW seconds without a hit. A chunk takes the
+-- class colour of whoever dealt most of it. Your own hits always show; your coop partner's
+-- only if the game sends them as PARTY or FRIENDLYPLAYER combat log events.
+local DAMAGE_WINDOW = 0.8
+local CHUNK_COLOR = { 1, 0.9, 0.55 } -- no colouring, or a hit from someone unknown
+local hitsOn = {}
+
+local CLASS_COLOR = {
+    WARRIOR = { 0.78, 0.61, 0.43 }, PALADIN = { 0.96, 0.55, 0.73 }, HUNTER = { 0.67, 0.83, 0.45 },
+    ROGUE = { 1, 0.96, 0.41 }, PRIEST = { 1, 1, 1 }, SHAMAN = { 0, 0.44, 0.87 },
+    MAGE = { 0.41, 0.8, 0.94 }, WARLOCK = { 0.58, 0.51, 0.79 }, DRUID = { 1, 0.49, 0.04 },
+}
+
+-- A player or pet name -> its player's class colour, from you, your party and their pets.
+local UNITS = { "player", "party1", "party2", "party3", "party4" }
+local PETS = { "pet", "partypet1", "partypet2", "partypet3", "partypet4" }
+local function ColorOf(name)
+    for i = 1, 5 do
+        if UnitName(UNITS[i]) == name or (UnitExists(PETS[i]) and UnitName(PETS[i]) == name) then
+            local _, class = UnitClass(UNITS[i])
+            local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class or ""]
+            if c then return { c.r, c.g, c.b } end
+            return CLASS_COLOR[class or ""] or CHUNK_COLOR
+        end
+    end
+    return CHUNK_COLOR
+end
+
+local function TopDamagerColor(mob)
+    local rec = hitsOn[mob]
+    if not rec or GetTime() - rec.at > DAMAGE_WINDOW then return CHUNK_COLOR end
+    local best, most
+    for source, amount in pairs(rec.by) do
+        if not most or amount > most then best, most = source, amount end
+    end
+    return best and ColorOf(best) or CHUNK_COLOR
+end
+
 local bars = {}
 local function Bar(i)
     if bars[i] then return bars[i] end
@@ -210,8 +249,12 @@ local function Refresh()
     for i = 1, shown do
         local b, p = Bar(i), list[i]
         -- The damage chunk follows its pile when bars reorder.
-        local s = lagOf[p.id] or { v = p.health, last = p.health, hold = 0 }
-        if p.health < s.last then s.hold = HOLD end -- a new hit: hold the chunk a bit longer
+        local s = lagOf[p.id] or { v = p.health, last = p.health, hold = 0, color = CHUNK_COLOR }
+        if p.health < s.last then
+            s.hold = HOLD -- a new hit: hold the chunk a bit longer
+            s.color = SP.Get("pileDamageColors") and TopDamagerColor(p.name) or CHUNK_COLOR
+        end
+        b.lag:SetStatusBarColor(s.color[1], s.color[2], s.color[3])
         if p.health >= s.v then s.v = p.health end -- healed, or a hurt member died: no chunk
         s.last = p.health
         lags[p.id] = s
@@ -286,4 +329,111 @@ function SP.UpdatePileBars()
     panel:SetScale(SP.Get("pileBarsScale"))
     Place()
     Refresh()
+end
+
+-- Combat log parsing ---------------------------------------------------------------------
+-- The game's own message formats ("%s's %s hits %s for %d.") turned into patterns. Spell
+-- formats go first: "Bob's Fireball hits" would also match the melee "%s hits".
+-- slots: which %s/%d is the source (s), target (t) or amount (n); x = skipped (spell,
+-- school). you = the source is you.
+local FORMATS = {
+    { "SPELLLOGCRITSCHOOLOTHEROTHER", "sxtnx" }, { "SPELLLOGSCHOOLOTHEROTHER", "sxtnx" },
+    { "SPELLLOGCRITOTHEROTHER", "sxtn" }, { "SPELLLOGOTHEROTHER", "sxtn" },
+    { "SPELLLOGCRITSCHOOLSELFOTHER", "xtnx", true }, { "SPELLLOGSCHOOLSELFOTHER", "xtnx", true },
+    { "SPELLLOGCRITSELFOTHER", "xtn", true }, { "SPELLLOGSELFOTHER", "xtn", true },
+    { "PERIODICAURADAMAGEOTHEROTHER", "tnxsx" }, { "PERIODICAURADAMAGESELFOTHER", "tnxx", true },
+    { "COMBATHITCRITSCHOOLOTHEROTHER", "stnx" }, { "COMBATHITSCHOOLOTHEROTHER", "stnx" },
+    { "COMBATHITCRITOTHEROTHER", "stn" }, { "COMBATHITOTHEROTHER", "stn" },
+    { "COMBATHITCRITSCHOOLSELFOTHER", "tnx", true }, { "COMBATHITSCHOOLSELFOTHER", "tnx", true },
+    { "COMBATHITCRITSELFOTHER", "tn", true }, { "COMBATHITSELFOTHER", "tn", true },
+}
+local patterns
+local function BuildPatterns()
+    patterns = {}
+    for i = 1, table.getn(FORMATS) do
+        local fmt = getglobal(FORMATS[i][1])
+        if type(fmt) == "string" then
+            local p = string.gsub(fmt, "([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
+            p = string.gsub(p, "%%s", "(.+)")
+            p = string.gsub(p, "%%d", "(%%d+)")
+            table.insert(patterns, { pattern = "^" .. p, slots = FORMATS[i][2], you = FORMATS[i][3] })
+        end
+    end
+end
+
+local function OnHit(message)
+    if not patterns then BuildPatterns() end
+    for i = 1, table.getn(patterns) do
+        local p = patterns[i]
+        local r = { string.find(message, p.pattern) }
+        if r[1] then
+            local source, target, amount
+            for k = 1, string.len(p.slots) do
+                local slot, value = string.sub(p.slots, k, k), r[k + 2]
+                if slot == "s" then
+                    source = value
+                elseif slot == "t" then
+                    target = value
+                elseif slot == "n" then
+                    amount = tonumber(value)
+                end
+            end
+            if p.you then source = UnitName("player") end
+            if source and target and amount then
+                local now = GetTime()
+                local rec = hitsOn[target]
+                if not rec or now - rec.at > DAMAGE_WINDOW then
+                    rec = { by = {} }
+                    hitsOn[target] = rec
+                end
+                rec.at = now
+                rec.by[source] = (rec.by[source] or 0) + amount
+            end
+            return
+        end
+    end
+end
+
+local DAMAGE_EVENTS = {
+    "CHAT_MSG_COMBAT_SELF_HITS", "CHAT_MSG_SPELL_SELF_DAMAGE", "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE",
+    "CHAT_MSG_COMBAT_PET_HITS", "CHAT_MSG_SPELL_PET_DAMAGE",
+    "CHAT_MSG_COMBAT_PARTY_HITS", "CHAT_MSG_SPELL_PARTY_DAMAGE",
+    "CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS", "CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE",
+}
+local hits = CreateFrame("Frame")
+for i = 1, table.getn(DAMAGE_EVENTS) do hits:RegisterEvent(DAMAGE_EVENTS[i]) end
+
+-- /asp combatlog: records which of those events the game fires, with one sample each, to
+-- check whether your coop partner's hits come through.
+local seen, recording = {}, false
+hits:SetScript("OnEvent", function()
+    if arg1 then OnHit(arg1) end
+    if recording then
+        local s = seen[event]
+        if not s then
+            s = { n = 0 }
+            seen[event] = s
+        end
+        s.n = s.n + 1
+        s.sample = arg1
+    end
+end)
+
+function SP.ToggleCombatLog()
+    recording = not recording
+    if recording then
+        for k in pairs(seen) do seen[k] = nil end
+        SP.Print("recording combat log events. Fight for a bit (in coop, let your partner hit things), then /asp combatlog again.")
+        return
+    end
+    SP.Print("combat log events seen:")
+    local any = false
+    for i = 1, table.getn(DAMAGE_EVENTS) do
+        local s = seen[DAMAGE_EVENTS[i]]
+        if s then
+            any = true
+            SP.Print(string.gsub(DAMAGE_EVENTS[i], "CHAT_MSG_", "") .. " x" .. s.n .. ": " .. tostring(s.sample))
+        end
+    end
+    if not any then SP.Print("none.") end
 end

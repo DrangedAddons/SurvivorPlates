@@ -146,7 +146,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(640)
+    frame:SetHeight(670)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -206,6 +206,7 @@ local function Build()
     Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -480)
     Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -512)
     Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -552)
+    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -588)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)
@@ -262,6 +263,8 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
         SP.SetDebug(not SP.debug)
         SP.Print(SP.debug and "debug on: a cyan dot marks where the game puts each plate. /asp debug turns it off."
             or "debug off.")
+    elseif msg == "combatlog" then
+        SP.ToggleCombatLog()
     elseif msg == "status" then
         local shown, all = SP.PlateCount()
         local _, hidden = SP.PileStats()

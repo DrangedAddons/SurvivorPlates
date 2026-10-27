@@ -17,7 +17,7 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 - **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Bosses and guardians are pinned to the bottom with a skull (white boss, red final boss, gold guardian). Above them, bars are ordered by the pile's total health, most at the bottom, and stack upward. Two piles only swap once one has 15% more health, so the order stays steady.
   - **Position:** **Where you drag it** (untick **Lock pile bars** to move it) or **Above your character**. The camera keeps your character in the middle of the screen, so above your character means a set height above the middle; **Height above your character** adjusts it.
   - **Show nameplates in the world:** untick it to hide every enemy plate in the world and use only the pile bars. The bars then list single mobs too.
-  - Damage taken shows as a pale gold chunk on the bar that holds for a moment, then drains away.
+  - Damage taken shows as a chunk on the bar that holds for a moment, then drains away. It's in the class colour of whoever dealt most of it (your partner's only if the game reports their hits in the combat log; check with `/asp combatlog`). **Damage in the dealer's class colour** turns that off and uses pale gold.
   - **Most pile bars** and **Pile bars scale** set its size.
 
 There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.
@@ -33,6 +33,7 @@ Settings are per character.
 - `/asp reset`: back to defaults
 - `/asp minimap`: show or hide the minimap button
 - `/asp status`: whether it's hooked into SurvivorsDragonUi, how many plates it sees and how many are hidden in piles
+- `/asp combatlog`: start, then stop, recording which combat log events the game sends, with a sample of each
 - `/asp debug`: a cyan dot where the game places each plate, hidden ones included
 
 ## Requirements

@@ -40,6 +40,7 @@ SP.defaults = {
     pileBarsY = nil,
     pileBarsAnchor = "free", -- "free" (where you drag it) or "player" (above your character)
     pileBarsHeight = 80, -- "player": how far above the middle of the screen the stack starts
+    pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
     worldPlates = true, -- false: with pile bars on in Collapse mode, hide every plate in the world
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
