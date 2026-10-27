@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+- **Grow (where you drag it):** **Upward** (as before: the drag strip and bottom row stay put, most health at the bottom) or **Downward**, the inverse: the drag strip sits on top, the top row stays put, most health at the top, and bars add downward.
+- **Position: Below your character.** The stack hangs below the middle of the screen and grows downward. Above your character still grows upward.
+- **Height above your character** is now **Distance from your character** and works for above and below.
+- When there's not enough room, bars that don't fit are left off at the far end, never moving the fixed edge.
+
 ## 0.12.2
 - **The pile bars' bottom edge and drag strip really stay put now.** Two things still moved them:
   - While unlocked, the panel was kept on screen, so a stack growing into the top of the screen pushed the whole panel down. It's only kept on screen while you're dragging it now.

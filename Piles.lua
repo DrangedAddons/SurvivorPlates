@@ -21,11 +21,10 @@ panel:SetMovable(true)
 panel:RegisterForDrag("LeftButton")
 panel:Hide()
 
--- Shown only while unlocked: a strip under the bars to grab (the bottom edge stays put),
+-- Shown only while unlocked: a strip on the fixed edge to grab (under the bars when they
+-- grow up, over them when they grow down),
 -- and a backdrop marking the area.
 local header = CreateFrame("Frame", nil, panel)
-header:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -2)
-header:SetPoint("TOPRIGHT", panel, "BOTTOMRIGHT", 0, -2)
 header:SetHeight(16)
 header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
 header:SetBackdropColor(0, 0, 0, 0.7)
@@ -95,8 +94,6 @@ local function Bar(i)
     local b = CreateFrame("Button", nil, panel)
     b:SetWidth(BAR_W)
     b:SetHeight(BAR_H)
-    -- Bar 1 is the bottom one; the rest stack upward.
-    b:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, (i - 1) * (BAR_H + SPACING))
     b:RegisterForClicks("LeftButtonUp")
     local bg = b:CreateTexture(nil, "BACKGROUND")
     bg:SetTexture("Interface\\Buttons\\WHITE8X8")
@@ -155,23 +152,61 @@ local function Bar(i)
     return b
 end
 
-local function AbovePlayer() return SP.Get("pileBarsAnchor") == "player" end
+-- Stuck to your character (above or below), rather than where you drag it.
+local function AbovePlayer() return SP.Get("pileBarsAnchor") ~= "free" end
 
+-- Below your character always grows down, above it always up; where you drag it, your pick.
+-- Growing up, the bottom edge is fixed and bar 1 (most health) is the bottom one; growing
+-- down it's the inverse.
+local function GrowsDown()
+    local anchor = SP.Get("pileBarsAnchor")
+    if anchor == "below" then return true end
+    return anchor == "free" and SP.Get("pileBarsGrow") == "down"
+end
+
+-- pileBarsY is the fixed edge: the panel's bottom growing up, its top growing down.
 local function Place()
     panel:ClearAllPoints()
+    local anchor, down = SP.Get("pileBarsAnchor"), GrowsDown()
     local x, y = SP.Get("pileBarsX"), SP.Get("pileBarsY")
-    if AbovePlayer() then
-        -- Grows upward from just above your character's head.
-        panel:SetPoint("BOTTOM", UIParent, "CENTER", 0, SP.Get("pileBarsHeight") / SP.Get("pileBarsScale"))
+    local away = SP.Get("pileBarsHeight") / SP.Get("pileBarsScale")
+    if anchor == "player" then
+        panel:SetPoint("BOTTOM", UIParent, "CENTER", 0, away)
+    elseif anchor == "below" then
+        panel:SetPoint("TOP", UIParent, "CENTER", 0, -away)
     elseif x and y then
-        panel:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+        panel:SetPoint(down and "TOPLEFT" or "BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
     else
-        panel:SetPoint("BOTTOMRIGHT", UIParent, "RIGHT", -260, 60)
+        panel:SetPoint(down and "TOPRIGHT" or "BOTTOMRIGHT", UIParent, "RIGHT", -260, 60)
     end
 end
 
--- Drag by the panel or its strip while unlocked. The bottom edge (and the strip under it)
--- is the fixed point: it's what gets saved, and bars only ever grow upward from it.
+-- Bars and the drag strip, laid out for the current direction.
+local laidDown
+local function Layout(down)
+    if laidDown == down then return end
+    laidDown = down
+    header:ClearAllPoints()
+    if down then
+        header:SetPoint("BOTTOMLEFT", panel, "TOPLEFT", 0, 2)
+        header:SetPoint("BOTTOMRIGHT", panel, "TOPRIGHT", 0, 2)
+    else
+        header:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -2)
+        header:SetPoint("TOPRIGHT", panel, "BOTTOMRIGHT", 0, -2)
+    end
+    for i = 1, table.getn(bars) do
+        local b = bars[i]
+        b:ClearAllPoints()
+        if down then
+            b:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(i - 1) * (BAR_H + SPACING))
+        else
+            b:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, (i - 1) * (BAR_H + SPACING))
+        end
+    end
+end
+
+-- Drag by the panel or its strip while unlocked. The fixed edge (and the strip on it) is
+-- what gets saved, and bars only ever grow away from it.
 local dragging = false
 local function StartDrag()
     if SP.Get("pileBarsLocked") or AbovePlayer() then return end
@@ -190,7 +225,7 @@ local function StopDrag()
     -- back later, which pins the top instead of the bottom.
     if panel.SetUserPlaced then panel:SetUserPlaced(false) end
     SP.SetQuiet("pileBarsX", panel:GetLeft())
-    SP.SetQuiet("pileBarsY", panel:GetBottom())
+    SP.SetQuiet("pileBarsY", GrowsDown() and panel:GetTop() or panel:GetBottom())
     Place()
 end
 panel:SetScript("OnDragStart", StartDrag)
@@ -247,21 +282,31 @@ local function Refresh()
         return
     end
     local unlocked = not SP.Get("pileBarsLocked") and not AbovePlayer()
-    -- Re-pin the bottom edge every refresh, in case anything else re-anchored the panel.
+    local down = GrowsDown()
+    -- Re-pin the fixed edge every refresh, in case anything else re-anchored the panel.
     if not dragging then Place() end
     local list = {}
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
     Order(list)
-    -- Only as many bars as fit between the panel's bottom and the top of the screen. The
-    -- bottom never moves; bars that don't fit (the least health) are left off.
+    -- Only as many bars as fit between the fixed edge and the edge of the screen it grows
+    -- toward. The fixed edge never moves; bars that don't fit (the least health) are left off.
     local fit = 1000
-    local bottom = panel:GetBottom()
-    if bottom and UIParent:GetTop() then
-        local top = UIParent:GetTop() * UIParent:GetEffectiveScale() / panel:GetEffectiveScale()
-        fit = math.max(1, math.floor((top - bottom - 20 + SPACING) / (BAR_H + SPACING)))
+    local room
+    if down then
+        room = panel:GetTop() -- down to the bottom of the screen, at 0
+    elseif panel:GetBottom() and UIParent:GetTop() then
+        room = UIParent:GetTop() * UIParent:GetEffectiveScale() / panel:GetEffectiveScale() - panel:GetBottom()
     end
+    if room then fit = math.max(1, math.floor((room - 20 + SPACING) / (BAR_H + SPACING))) end
     local shown = math.min(table.getn(list), SP.Get("pileBarsMax"), fit)
     local lags = {}
+    for i = 1, shown do
+        if not bars[i] then
+            Bar(i)
+            laidDown = nil
+        end
+    end
+    Layout(down)
     for i = 1, shown do
         local b, p = Bar(i), list[i]
         -- The damage chunk follows its pile when bars reorder.

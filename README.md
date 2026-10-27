@@ -15,7 +15,8 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 - **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
 - **Only collapse in combat.**
 - **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Bosses and guardians are pinned to the bottom with a skull (white boss, red final boss, gold guardian). Above them, bars are ordered by the pile's total health, most at the bottom, and stack upward. Two piles only swap once one has 15% more health, so the order stays steady.
-  - **Position:** **Where you drag it** (untick **Lock pile bars** to move it) or **Above your character**. The camera keeps your character in the middle of the screen, so above your character means a set height above the middle; **Height above your character** adjusts it.
+  - **Position:** **Where you drag it** (untick **Lock pile bars** to move it), **Above your character** or **Below your character**. The camera keeps your character in the middle of the screen, so above or below means a set distance from the middle; **Distance from your character** adjusts it.
+  - **Grow (where you drag it):** **Upward** keeps the bottom row and drag strip still with the most health at the bottom; **Downward** is the inverse. Above your character always grows up, below always down.
   - **Show nameplates in the world:** untick it to hide every enemy plate in the world and use only the pile bars. The bars then list single mobs too.
   - Damage taken shows as a chunk on the bar that holds for a moment, then drains away. It's in the class colour of whoever dealt most of it (your partner's only if the game reports their hits in the combat log; check with `/asp combatlog`). **Damage in the dealer's class colour** turns that off and uses pale gold.
   - **Most pile bars** and **Pile bars scale** set its size.

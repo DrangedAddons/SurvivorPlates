@@ -5,7 +5,8 @@ local LABELS = {
     spread = "Spread (game default)", collapse = "Collapse piles",
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
-    free = "Where you drag it", player = "Above your character",
+    free = "Where you drag it", player = "Above your character", below = "Below your character",
+    up = "Upward", down = "Downward",
 }
 
 local frame
@@ -146,7 +147,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(670)
+    frame:SetHeight(720)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -202,11 +203,12 @@ local function Build()
     Check(frame, "pileBars", "Show pile bars", R, -340)
     Check(frame, "worldPlates", "Show nameplates in the world", R, -364)
     Cycle(frame, "pileBarsAnchor", "Position", R, -392)
-    Slider(frame, "pileBarsHeight", "Height above your character", -200, 400, 5, R, -440, " px")
-    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -480)
-    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -512)
-    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -552)
-    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -588)
+    Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -440)
+    Slider(frame, "pileBarsHeight", "Distance from your character", -200, 400, 5, R, -488, " px")
+    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -528)
+    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -560)
+    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -600)
+    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -636)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)

@@ -38,8 +38,9 @@ SP.defaults = {
     pileBarsScale = 1,
     pileBarsX = nil, -- saved panel position (screen offset from bottom-left); nil = default
     pileBarsY = nil,
-    pileBarsAnchor = "free", -- "free" (where you drag it) or "player" (above your character)
-    pileBarsHeight = 80, -- "player": how far above the middle of the screen the stack starts
+    pileBarsAnchor = "free", -- "free" (where you drag it), "player" (above your character) or "below"
+    pileBarsHeight = 80, -- "player"/"below": how far from the middle of the screen the stack starts
+    pileBarsGrow = "up", -- "free": "up" (fixed bottom, most health at the bottom) or "down" (the inverse)
     pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
     worldPlates = true, -- false: with pile bars on in Collapse mode, hide every plate in the world
     -- Minimap button (Reset to defaults leaves these alone)
@@ -50,7 +51,8 @@ local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true, pileBarsX = t
 
 local CHOICES = {
     stackMode = { "spread", "collapse" },
-    pileBarsAnchor = { "free", "player" },
+    pileBarsAnchor = { "free", "player", "below" },
+    pileBarsGrow = { "up", "down" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
