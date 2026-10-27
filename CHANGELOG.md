@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0
+- **Recent damage strip on pile bars.** A thin strip along the bottom of each pile bar shows who's been hitting that mob over the last 10 seconds, split by each player's share in class colours, biggest share on the left. It measures damage dealt, so mobs joining the pile or dying don't throw it off. It disappears when nobody has hit that mob for 10 seconds.
+  - Mobs with the same name share a strip, because the combat log names the mob, not which one.
+  - Uses **Damage in the dealer's class colour**.
+
 ## 0.15.0
 - **Boss damage breakdown.** On boss and guardian bars the damage doesn't drain away: the missing health is split into class-coloured segments, one per player, each as wide as that player's share of the damage so far. Biggest share sits next to the health. Pets count toward their owner; damage from anyone the addon can't place shows pale gold.
   - It covers the whole fight and resets once the boss has been off the bars for 15 seconds.

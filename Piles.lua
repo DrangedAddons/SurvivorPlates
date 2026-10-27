@@ -106,6 +106,94 @@ end
 
 local function ByAmount(a, b) return a.amount > b.amount end
 
+-- Piles: who's been hitting each mob over the last RECENT seconds, in one-second buckets.
+-- mob name -> { [second] = { [unit or "other"] = { amount, color } } }. Drawn as a thin
+-- strip along the bottom of the pile's bar, split by each player's share. It measures damage
+-- dealt, not health missing, so mobs joining and dying don't throw it off.
+local RECENT, STRIP_H = 10, 3
+local recentHits = {}
+
+local function AddRecentHit(target, source, amount)
+    local color, unit = ColorOf(source)
+    local key = unit or "other"
+    local now = math.floor(GetTime())
+    local rec = recentHits[target]
+    if not rec then
+        rec = {}
+        recentHits[target] = rec
+    end
+    for sec in pairs(rec) do
+        if now - sec >= RECENT then rec[sec] = nil end
+    end
+    local bucket = rec[now]
+    if not bucket then
+        bucket = {}
+        rec[now] = bucket
+    end
+    local e = bucket[key]
+    if not e then
+        e = { amount = 0 }
+        bucket[key] = e
+    end
+    e.amount = e.amount + amount
+    e.color = color
+end
+
+local function DrawStrip(b, name)
+    local strip, segs = b.strip, b.stripSegs
+    local rec = recentHits[name]
+    local sums, parts, total = {}, {}, 0
+    local now = math.floor(GetTime())
+    if rec then
+        for sec, bucket in pairs(rec) do
+            if now - sec < RECENT then
+                for key, e in pairs(bucket) do
+                    local sum = sums[key]
+                    if not sum then
+                        sum = { amount = 0 }
+                        sums[key] = sum
+                        table.insert(parts, sum)
+                    end
+                    sum.amount = sum.amount + e.amount
+                    sum.color = e.color
+                    total = total + e.amount
+                end
+            else
+                rec[sec] = nil
+            end
+        end
+    end
+    if total <= 0 then
+        strip:Hide()
+        return
+    end
+    table.sort(parts, ByAmount)
+    local inner = BAR_W - 2
+    local x, n = 0, 0
+    for i = 1, table.getn(parts) do
+        local w = inner * parts[i].amount / total
+        if w >= 0.5 then
+            n = n + 1
+            local seg = segs[n]
+            if not seg then
+                seg = strip:CreateTexture(nil, "ARTWORK")
+                seg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                seg:SetHeight(STRIP_H)
+                segs[n] = seg
+            end
+            seg:ClearAllPoints()
+            seg:SetPoint("LEFT", strip, "LEFT", x, 0)
+            seg:SetWidth(w)
+            local c = parts[i].color or CHUNK_COLOR
+            seg:SetVertexColor(c[1], c[2], c[3], 1)
+            seg:Show()
+            x = x + w
+        end
+    end
+    for i = n + 1, table.getn(segs) do segs[i]:Hide() end
+    strip:Show()
+end
+
 -- The boss bar's missing health, split into one segment per player, biggest share first
 -- (next to the health), each as wide as that player's share of the damage.
 local function DrawBreakdown(b, p)
@@ -216,6 +304,18 @@ local function Bar(i)
     hl:SetBlendMode("ADD")
     b.health, b.name, b.count, b.edge, b.skull, b.lag = health, name, count, edge, skull, lag
     b.segs = {}
+    -- Recent damage share strip, along the bottom edge over the health.
+    local strip = CreateFrame("Frame", nil, b)
+    strip:SetFrameLevel(b:GetFrameLevel() + 3)
+    strip:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 1, 1)
+    strip:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
+    strip:SetHeight(STRIP_H)
+    local stripBg = strip:CreateTexture(nil, "BACKGROUND")
+    stripBg:SetTexture("Interface\\Buttons\\WHITE8X8")
+    stripBg:SetVertexColor(0, 0, 0, 0.7)
+    stripBg:SetAllPoints(strip)
+    strip:Hide()
+    b.strip, b.stripSegs = strip, {}
     b:SetScript("OnClick", function()
         -- 1.12 has no unit token for a plate; target the nearest mob with this name.
         if this.mob then TargetByName(this.mob, true) end
@@ -399,6 +499,11 @@ local function Refresh()
         else
             for k = 1, table.getn(b.segs) do b.segs[k]:Hide() end
         end
+        if not p.boss and SP.Get("pileDamageColors") then
+            DrawStrip(b, p.name)
+        else
+            b.strip:Hide()
+        end
         b.lag:SetValue(s.v)
         b.mob = p.name
         b.name:SetText(p.name)
@@ -538,6 +643,7 @@ local function OnHit(message)
                 rec.at = now
                 rec.by[source] = (rec.by[source] or 0) + amount
                 AddBossHit(target, source, amount)
+                AddRecentHit(target, source, amount)
             end
             return
         end
