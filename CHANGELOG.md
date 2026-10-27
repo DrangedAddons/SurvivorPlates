@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.2
+- **Much stickier columns.** Once a plate is in a column it stays for at least 3 seconds (was 1). After that it only leaves when its mob is far away: more than two plate widths to the side of the column, or more than 12 of the game's plate rows from the plate below it. It used to leave as soon as it stopped touching the column.
+
 ## 0.3.1
 - **Stickier columns.** Plates stopped bouncing between columns:
   - Columns are remembered from one moment to the next instead of being rebuilt from scratch, and a column keeps its order. A new plate goes on top and never shuffles the others.

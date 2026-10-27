@@ -280,10 +280,11 @@ end
 -- the game nudges a plate:
 --  * Joining is easy: a free plate joins a column if it overlaps it sideways by at least
 --    `stackOverlap` % and sits within reach of the column's top plate.
---  * Leaving is hard: a member stays for at least STICK_TIME after joining, and after that
---    until it stops touching the column sideways or drifts twice as far as it could join from.
+--  * Leaving is very hard: a member stays for at least STICK_TIME after joining, and after
+--    that until its mob is far away: more than two plate widths sideways from the column, or
+--    more than LEAVE_ROWS of the game's plate rows from the plate below it.
 --  * Members keep their order, so a column never reorders itself; new plates go on top.
-local STICK_TIME = 1.0
+local STICK_TIME, LEAVE_ROWS = 3.0, 12
 local live, byPlate, order, joinedAt = {}, {}, {}, {}
 local function ComputeStack()
     for _, t in ipairs({ wantX, wantY }) do
@@ -316,7 +317,8 @@ local function ComputeStack()
                 e.plate, e.x, e.y, e.w, e.h = plate, x * bs, y * bs, db.width * eff, h
                 -- The game spreads its plate frames a frame's height apart, so a plate one
                 -- to three of those above the column's top is still part of the same pile.
-                e.reach = 3 * (plate:GetHeight() or 32) * plate:GetEffectiveScale()
+                e.row = (plate:GetHeight() or 32) * plate:GetEffectiveScale()
+                e.reach = 3 * e.row
                 e.taken = false
                 byPlate[plate] = e
             end
@@ -338,9 +340,9 @@ local function ComputeStack()
                     e.taken = true
                 elseif table.getn(col.list) < db.stackMax then
                     local top = col.list[table.getn(col.list)]
-                    local touching = (e.w + col.w) * 0.5 - math.abs(e.x - col.x) >= 0
-                    local near = math.abs(e.y - top.y) <= 2 * e.reach
-                    if now - (joinedAt[e.plate] or 0) < STICK_TIME or (touching and near) then
+                    local far = math.abs(e.x - col.x) > 2 * math.max(e.w, col.w)
+                        or math.abs(e.y - top.y) > LEAVE_ROWS * e.row
+                    if now - (joinedAt[e.plate] or 0) < STICK_TIME or not far then
                         table.insert(col.list, e)
                         e.taken = true
                     end
