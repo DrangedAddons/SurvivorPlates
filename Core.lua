@@ -6,7 +6,9 @@
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
-SP.pileList = {} -- this pass's piles of 2+: { name, count, health (0-1 average), target }
+-- This pass's piles of 2+ (every pile, singles too, while world plates are hidden):
+-- { name, count, health (0-1 average), target, boss }
+SP.pileList = {}
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
 
 SP.defaults = {
@@ -34,6 +36,9 @@ SP.defaults = {
     pileBarsScale = 1,
     pileBarsX = nil, -- saved panel position (screen offset from bottom-left); nil = default
     pileBarsY = nil,
+    pileBarsAnchor = "free", -- "free" (where you drag it) or "player" (above your character)
+    pileBarsHeight = 80, -- "player": how far above the middle of the screen the stack starts
+    worldPlates = true, -- false: with pile bars on in Collapse mode, hide every plate in the world
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
     minimapAngle = 225, -- degrees around the minimap, 0 = right
@@ -42,6 +47,7 @@ local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true, pileBarsX = t
 
 local CHOICES = {
     stackMode = { "spread", "collapse" },
+    pileBarsAnchor = { "free", "player" },
     namePos = { "above", "inside", "hidden" },
     healthText = { "none", "percent", "current", "both" },
 }
@@ -294,8 +300,14 @@ local function Joins(e, m, sameMob, share)
     return Touching(e, m) or (sameMob and PileReach(e, m, share))
 end
 
+-- World plates are hidden only when the pile bars can stand in for them.
+local function WorldPlatesHidden()
+    return not db.worldPlates and db.pileBars and db.stackMode == "collapse"
+end
+
 local function ComputePiles(n, share)
     local now = GetTime()
+    local hideAll = WorldPlatesHidden()
     local piles = {}
     -- Last pass's piles. `ghosts` are members the game has hidden for now.
     for _, list in pairs(order) do
@@ -383,9 +395,9 @@ local function ComputePiles(n, share)
                 table.insert(list, e.plate)
                 memberName[e.plate] = e.name
                 lastSeen[e.plate] = now
-                if e ~= shown then pileHidden[e.plate] = true end
+                if e ~= shown or hideAll then pileHidden[e.plate] = true end
             end
-            if count > 1 then
+            if count > 1 or hideAll then
                 pileCount[shown.plate] = count
                 -- For the pile bars: the pile's average health, read off each member's bar.
                 local sum = 0
@@ -395,7 +407,7 @@ local function ComputePiles(n, share)
                     if high and low and high > low then sum = sum + ((bar:GetValue() or low) - low) / (high - low) end
                 end
                 table.insert(SP.pileList, { name = shown.name or "?", count = count, health = sum / count,
-                    target = IsTarget(shown.plate, plates[shown.plate]) })
+                    target = IsTarget(shown.plate, plates[shown.plate]), boss = bigNames[shown.name or ""] })
             end
         end
         for k = 1, table.getn(pile.ghosts) do table.insert(list, pile.ghosts[k]) end

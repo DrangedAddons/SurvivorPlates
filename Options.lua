@@ -5,6 +5,7 @@ local LABELS = {
     spread = "Spread (game default)", collapse = "Collapse piles",
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
+    free = "Where you drag it", player = "Above your character",
 }
 
 local frame
@@ -145,7 +146,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(580)
+    frame:SetHeight(640)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -179,10 +180,6 @@ local function Build()
     Cycle(frame, "stackMode", "Mode", L, -66)
     Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, L, -116, "%")
     Check(frame, "combatOnly", "Only collapse in combat", L, -148)
-    Check(frame, "pileBars", "Show pile bars", L, -172)
-    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", L, -196)
-    Slider(frame, "pileBarsMax", "Most pile bars", 1, 20, 1, L, -228)
-    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, L, -268)
 
     Heading(frame, "Size", R, -44)
     Slider(frame, "width", "Width", 40, 250, 1, R, -66, " px")
@@ -192,13 +189,23 @@ local function Build()
     Cycle(frame, "namePos", "Name", R, -222)
     Cycle(frame, "healthText", "Health text", R, -270)
 
-    Heading(frame, "Target and priority", L, -310)
-    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -332)
-    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -372)
-    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -412)
-    Check(frame, "targetHighlight", "Gold border on the target", L, -444)
-    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -468)
-    Check(frame, "minimapButton", "Show minimap button", L, -500)
+    Heading(frame, "Target and priority", L, -190)
+    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -212)
+    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -252)
+    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -292)
+    Check(frame, "targetHighlight", "Gold border on the target", L, -324)
+    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -348)
+    Check(frame, "minimapButton", "Show minimap button", L, -380)
+
+    -- Pile bars: Collapse piles mode only.
+    Heading(frame, "Pile bars", R, -318)
+    Check(frame, "pileBars", "Show pile bars", R, -340)
+    Check(frame, "worldPlates", "Show nameplates in the world", R, -364)
+    Cycle(frame, "pileBarsAnchor", "Position", R, -392)
+    Slider(frame, "pileBarsHeight", "Height above your character", -200, 400, 5, R, -440, " px")
+    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -480)
+    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -512)
+    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -552)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)

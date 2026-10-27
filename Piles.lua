@@ -1,6 +1,8 @@
 -- Pile bars: a panel that lists each collapsed pile as its own bar, like boss bars.
 -- Each bar shows the mob's name, how many are in the pile and their average health.
--- Click a bar to target one of that mob. Shown only in Collapse piles mode.
+-- Click a bar to target one of that mob. Shown only in Collapse piles mode. It sits where
+-- you drag it, or above your character: the camera follows you, so that's a fixed height
+-- above the middle of the screen (the game tells addons nothing better).
 local SP = SurvivorPlates
 local BAR_W, BAR_H, SPACING = 200, 16, 3
 -- The same bar texture SurvivorsDragonUi gives its plates.
@@ -88,10 +90,15 @@ local function Bar(i)
     return b
 end
 
+local function AbovePlayer() return SP.Get("pileBarsAnchor") == "player" end
+
 local function Place()
     panel:ClearAllPoints()
     local x, y = SP.Get("pileBarsX"), SP.Get("pileBarsY")
-    if x and y then
+    if AbovePlayer() then
+        -- Grows upward from just above your character's head.
+        panel:SetPoint("BOTTOM", UIParent, "CENTER", 0, SP.Get("pileBarsHeight") / SP.Get("pileBarsScale"))
+    elseif x and y then
         panel:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
     else
         panel:SetPoint("RIGHT", UIParent, "RIGHT", -260, 120)
@@ -115,7 +122,9 @@ header:RegisterForDrag("LeftButton")
 header:SetScript("OnDragStart", StartDrag)
 header:SetScript("OnDragStop", StopDrag)
 
+-- Bosses first, then the biggest piles.
 local function ByCount(a, b)
+    if (a.boss and 1 or 0) ~= (b.boss and 1 or 0) then return a.boss and true or false end
     if a.count ~= b.count then return a.count > b.count end
     return a.name < b.name
 end
@@ -126,7 +135,7 @@ local function Refresh()
         panel:Hide()
         return
     end
-    local unlocked = not SP.Get("pileBarsLocked")
+    local unlocked = not SP.Get("pileBarsLocked") and not AbovePlayer()
     local list = {}
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
     table.sort(list, ByCount)

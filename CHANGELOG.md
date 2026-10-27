@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+- **Pile bars above your character.** New **Position** setting for the pile bars: **Where you drag it** (as before, the default) or **Above your character**. Above your character, the stack grows upward from a set height above the middle of the screen, where the camera keeps you. **Height above your character** moves it up or down.
+- **Show nameplates in the world** (on by default). Untick it, with pile bars on in Collapse piles mode, and every enemy plate in the world is hidden and can't be clicked. The pile bars then list every pile, single mobs included, so nothing goes missing. Click a bar to target that mob.
+- Bosses and guardians are listed first in the pile bars.
+- **Most pile bars** goes up to 30.
+- Pile bar settings moved to their own **Pile bars** section on the right of the settings window.
+
 ## 0.6.0
 - **Pile bars.** In Collapse piles mode, a panel lists each pile as its own bar, like boss bars: the mob's name, how many are in the pile (gold "x12") and the pile's average health. Biggest piles first.
   - Click a bar to target the nearest mob with that name.
