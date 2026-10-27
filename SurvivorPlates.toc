@@ -2,7 +2,7 @@
 ## Title: SurvivorPlates
 ## Notes: Nameplate stacking, size and target options for SurvivorsDragonUi.
 ## Author: Dranged
-## Version: 0.3.3
+## Version: 0.3.4
 ## Dependencies: SurvivorsDragonUi
 ## SavedVariables: SurvivorPlatesDB
 

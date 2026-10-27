@@ -185,6 +185,7 @@ local function Build()
     Check(frame, "clampTop", "Keep stacks on screen", L, -308)
     Check(frame, "combatOnly", "Only stack in combat", L, -332)
     Check(frame, "moveClicks", "Click area follows the plate", L, -356)
+    Check(frame, "stackKeep", "Plates stay in their column", R, -308)
 
     Heading(frame, "Size", R, -44)
     Slider(frame, "width", "Width", 40, 250, 1, R, -66, " px")

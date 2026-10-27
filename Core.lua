@@ -13,6 +13,7 @@ SP.defaults = {
     stackMode = "spread", -- "spread" (the game's own layout) or "stack" (columns)
     stackGap = 2,
     stackOverlap = 30, -- % of the narrower plate's width two plates must share to join a column
+    stackKeep = true, -- a plate that joins a column stays in it until its plate goes away
     stackLeave = 2, -- plate widths sideways (x6 plate rows up/down) before a plate leaves its column
     stackMax = 10, -- most plates in one column; the rest start a new one
     stackSpeed = 12, -- 0 = jump straight to place
@@ -287,7 +288,7 @@ end
 --    below it.
 --  * Members keep their order, so a column never reorders itself; new plates go on top.
 local STICK_TIME, ROWS_PER_WIDTH = 3.0, 6
-local live, byPlate, order, joinedAt = {}, {}, {}, {}
+local live, byPlate, order, joinedAt, memberName = {}, {}, {}, {}, {}
 local function ComputeStack()
     for _, t in ipairs({ wantX, wantY }) do
         for k in pairs(t) do t[k] = nil end
@@ -322,6 +323,7 @@ local function ComputeStack()
                 e.row = (plate:GetHeight() or 32) * plate:GetEffectiveScale()
                 e.reach = 3 * e.row
                 e.taken = false
+                e.name = PlateName(data)
                 byPlate[plate] = e
             end
         end
@@ -336,6 +338,8 @@ local function ComputeStack()
         local col
         for i = 1, table.getn(list) do
             local e = byPlate[list[i]]
+            -- The game reuses plate frames: a frame now showing another mob starts afresh.
+            if e and e.name ~= memberName[e.plate] then e = nil end
             if e and not e.taken then
                 if not col then
                     col = { list = { e }, x = e.x, w = e.w }
@@ -344,7 +348,7 @@ local function ComputeStack()
                     local top = col.list[table.getn(col.list)]
                     local far = math.abs(e.x - col.x) > db.stackLeave * math.max(e.w, col.w)
                         or math.abs(e.y - top.y) > db.stackLeave * ROWS_PER_WIDTH * e.row
-                    if now - (joinedAt[e.plate] or 0) < STICK_TIME or not far then
+                    if db.stackKeep or now - (joinedAt[e.plate] or 0) < STICK_TIME or not far then
                         table.insert(col.list, e)
                         e.taken = true
                     end
@@ -392,6 +396,7 @@ local function ComputeStack()
         for i = 1, table.getn(col.list) do
             local e = col.list[i]
             plateList[i] = e.plate
+            memberName[e.plate] = e.name
             if not prev then
                 e.fx, e.fy = e.x, e.y
             else
