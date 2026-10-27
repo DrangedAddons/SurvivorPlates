@@ -8,7 +8,7 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 
 **Stacking**
 - **Mode:** **Spread** (the default) leaves plates where the game puts them. The game already spreads them so they never overlap. **Stack in columns** lines up plates that overlap sideways into tidy columns, packed right on top of each other.
-- **Gap between plates**, **Sideways overlap to join a column**, **Most plates in a column** and **Movement speed** (0 jumps straight to place).
+- **Gap between plates**, **Sideways overlap to join a column**, **Leave a column beyond** (how far a mob has to get before its plate leaves; higher is stickier), **Most plates in a column** and **Movement speed** (0 jumps straight to place).
 - **Keep stacks on screen**, **Only stack in combat**.
 - **Click area follows the plate:** clicking a moved plate targets its mob.
 

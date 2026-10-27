@@ -13,6 +13,7 @@ SP.defaults = {
     stackMode = "spread", -- "spread" (the game's own layout) or "stack" (columns)
     stackGap = 2,
     stackOverlap = 30, -- % of the narrower plate's width two plates must share to join a column
+    stackLeave = 2, -- plate widths sideways (x6 plate rows up/down) before a plate leaves its column
     stackMax = 10, -- most plates in one column; the rest start a new one
     stackSpeed = 12, -- 0 = jump straight to place
     clampTop = true,
@@ -281,10 +282,11 @@ end
 --  * Joining is easy: a free plate joins a column if it overlaps it sideways by at least
 --    `stackOverlap` % and sits within reach of the column's top plate.
 --  * Leaving is very hard: a member stays for at least STICK_TIME after joining, and after
---    that until its mob is far away: more than two plate widths sideways from the column, or
---    more than LEAVE_ROWS of the game's plate rows from the plate below it.
+--    that until its mob is far away: more than `stackLeave` plate widths sideways from the
+--    column, or more than ROWS_PER_WIDTH times that in the game's plate rows from the plate
+--    below it.
 --  * Members keep their order, so a column never reorders itself; new plates go on top.
-local STICK_TIME, LEAVE_ROWS = 3.0, 12
+local STICK_TIME, ROWS_PER_WIDTH = 3.0, 6
 local live, byPlate, order, joinedAt = {}, {}, {}, {}
 local function ComputeStack()
     for _, t in ipairs({ wantX, wantY }) do
@@ -340,8 +342,8 @@ local function ComputeStack()
                     e.taken = true
                 elseif table.getn(col.list) < db.stackMax then
                     local top = col.list[table.getn(col.list)]
-                    local far = math.abs(e.x - col.x) > 2 * math.max(e.w, col.w)
-                        or math.abs(e.y - top.y) > LEAVE_ROWS * e.row
+                    local far = math.abs(e.x - col.x) > db.stackLeave * math.max(e.w, col.w)
+                        or math.abs(e.y - top.y) > db.stackLeave * ROWS_PER_WIDTH * e.row
                     if now - (joinedAt[e.plate] or 0) < STICK_TIME or not far then
                         table.insert(col.list, e)
                         e.taken = true

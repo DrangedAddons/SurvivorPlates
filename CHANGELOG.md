@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+- **Leave a column beyond** slider (0.5 to 6 plate widths, default 2): how far a plate's mob has to get from its column before the plate leaves it. Sideways it's that many plate widths; up and down it's six of the game's plate rows per plate width (2 = 12 rows, as before). Higher is stickier.
+- The Target and priority section moved down to make room.
+
 ## 0.3.2
 - **Much stickier columns.** Once a plate is in a column it stays for at least 3 seconds (was 1). After that it only leaves when its mob is far away: more than two plate widths to the side of the column, or more than 12 of the game's plate rows from the plate below it. It used to leave as soon as it stopped touching the column.
 
