@@ -6,7 +6,7 @@ local LABELS = {
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
     free = "Where you drag it", player = "Above your character", below = "Below your character",
-    window = "A set time back", pile = "As long as the pile is up",
+    window = "A set time back", pile = "As long as its bar is up",
     up = "Upward", down = "Downward",
 }
 
@@ -314,7 +314,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(700)
+    frame:SetHeight(720)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -356,42 +356,41 @@ local function Build()
     Heading(frame, "Nameplates", L, -44)
     Check(frame, "worldPlates", "Show nameplates above mobs", L, -66)
     Cycle(frame, "stackMode", "Piles of mobs", L, -94)
-    SubHeading(frame, "Size", L, -146)
-    Slider(frame, "width", "Width", 40, 250, 1, L, -162, " px")
-    Slider(frame, "height", "Height", 4, 40, 1, L, -202, " px")
-    Slider(frame, "scale", "Scale", 0.5, 2, 0.05, L, -242)
-    Slider(frame, "fontSize", "Font size", 6, 20, 1, L, -282)
-    Cycle(frame, "namePos", "Name", L, -318)
-    Cycle(frame, "healthText", "Health text", L, -364)
-    SubHeading(frame, "Target and bosses", L, -414)
-    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -430)
-    Check(frame, "targetHighlight", "Gold border on the target", L, -470)
-    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -494)
-    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -518)
-    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -558)
+    Slider(frame, "stackOverlap", "Sideways overlap to join a pile", 0, 100, 5, L, -142, "%")
+    SubHeading(frame, "Size", L, -186)
+    Slider(frame, "width", "Width", 40, 250, 1, L, -202, " px")
+    Slider(frame, "height", "Height", 4, 40, 1, L, -242, " px")
+    Slider(frame, "scale", "Scale", 0.5, 2, 0.05, L, -282)
+    Slider(frame, "fontSize", "Font size", 6, 20, 1, L, -322)
+    Cycle(frame, "namePos", "Name", L, -358)
+    Cycle(frame, "healthText", "Health text", L, -404)
+    SubHeading(frame, "Target and bosses", L, -454)
+    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -470)
+    Check(frame, "targetHighlight", "Gold border on the target", L, -510)
+    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -534)
+    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -558)
+    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -598)
 
-    -- Right: the pile bars panel, and how piles form (shared with Collapse piles).
+    -- Right: the pile bars panel, one bar per mob type.
     Heading(frame, "Pile bars", R, -44)
     Check(frame, "pileBars", "Show pile bars", R, -66)
-    SubHeading(frame, "How piles form", R, -98)
-    Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, R, -114, "%")
-    SubHeading(frame, "Placement", R, -160)
-    Cycle(frame, "pileBarsAnchor", "Position", R, -176)
-    Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -222)
+    SubHeading(frame, "Placement", R, -98)
+    Cycle(frame, "pileBarsAnchor", "Position", R, -114)
+    Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -160)
     -- Above and below keep their own offset; + always moves the stack up.
     NudgeSlider(frame, function()
         return SP.Get("pileBarsAnchor") == "below" and "pileBarsBelowY" or "pileBarsHeight"
-    end, "Vertical offset", -500, 500, 1, R, -268, " px")
-    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -332)
-    SubHeading(frame, "Look", R, -366)
-    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -382)
-    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -422)
-    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -460)
-    Cycle(frame, "pileShareMode", "Contribution strip measures", R, -490)
-    TimeBoxes(frame, "pileShareSecs", "How far back", 1, 7200, R, -538,
+    end, "Vertical offset", -500, 500, 1, R, -206, " px")
+    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -270)
+    SubHeading(frame, "Look", R, -304)
+    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -320)
+    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -360)
+    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -398)
+    Cycle(frame, "pileShareMode", "Contribution strip measures", R, -428)
+    TimeBoxes(frame, "pileShareSecs", "How far back", 1, 7200, R, -476,
         function() return SP.Get("pileShareMode") == "window" end)
 
-    Check(frame, "minimapButton", "Show minimap button", L, -606)
+    Check(frame, "minimapButton", "Show minimap button", L, -646)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)

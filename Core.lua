@@ -6,10 +6,11 @@
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
--- This pass's piles of 2+, plus bosses and guardians (every pile, singles too, while world
--- plates are hidden):
--- { id (the pile's uid, kept for the pile's whole life), name, count, health (0-1 average),
---   hp (the members' bar values added up), target, boss (nil, "boss", "final" or "guardian") }
+-- The pile bars: one entry per mob type on screen with 2 or more of it, counting every mob
+-- of that type whether it's in a pile or not, plus bosses and guardians (and single mobs
+-- while the world plates are hidden):
+-- { id (the mob name), name, count, health (0-1 average), hp (the mobs' bar values added up),
+--   target, boss (nil, "boss", "final" or "guardian") }
 SP.pileList = {}
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
 
@@ -320,7 +321,7 @@ local nextUid = 0
 
 local function ComputePiles(n, share)
     local now = GetTime()
-    -- With the world plates hidden the pile bars list single mobs too, so nothing goes missing.
+    -- With the world plates hidden the pile bars list lone mobs too, so nothing goes missing.
     local hideAll = not db.worldPlates
     local collapse = db.stackMode == "collapse"
     local piles = {}
@@ -414,26 +415,37 @@ local function ComputePiles(n, share)
                 if collapse and e ~= shown then pileHidden[e.plate] = true end
             end
             if collapse and count > 1 then pileCount[shown.plate] = count end
-            if count > 1 or hideAll or bigNames[shown.name or ""] then
-                -- For the pile bars: the pile's average health and its health added up, read
-                -- off each member's bar.
-                local sum, hp = 0, 0
-                for k = 1, count do
-                    local bar = plates[pile.live[k].plate].bar
-                    local low, high = bar:GetMinMaxValues()
-                    if high and low and high > low then
-                        local v = (bar:GetValue() or low) - low
-                        sum = sum + v / (high - low)
-                        hp = hp + v
-                    end
-                end
-                table.insert(SP.pileList, { id = pile.uid, name = shown.name or "?", count = count,
-                    health = sum / count, hp = hp,
-                    target = IsTarget(shown.plate, plates[shown.plate]), boss = bigNames[shown.name or ""] })
-            end
         end
         for k = 1, table.getn(pile.ghosts) do table.insert(list, pile.ghosts[k]) end
         if list[1] then order[list[1]] = list end
+    end
+    -- The pile bars go by mob type, not by pile: every mob of a type counts toward its bar,
+    -- piled or not. Health is read off each mob's bar.
+    local types = {}
+    for i = 1, n do
+        local e = live[i]
+        if e.name then
+            local t = types[e.name]
+            if not t then
+                t = { id = e.name, name = e.name, count = 0, sum = 0, hp = 0, boss = bigNames[e.name] }
+                types[e.name] = t
+                table.insert(SP.pileList, t)
+            end
+            t.count = t.count + 1
+            local bar = plates[e.plate].bar
+            local low, high = bar:GetMinMaxValues()
+            if high and low and high > low then
+                local v = (bar:GetValue() or low) - low
+                t.sum = t.sum + v / (high - low)
+                t.hp = t.hp + v
+            end
+            if IsTarget(e.plate, plates[e.plate]) then t.target = true end
+        end
+    end
+    for i = table.getn(SP.pileList), 1, -1 do
+        local t = SP.pileList[i]
+        t.health = t.sum / t.count
+        if t.count < 2 and not t.boss and not hideAll then table.remove(SP.pileList, i) end
     end
 end
 

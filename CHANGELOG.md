@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0
+- **Pile bars go by mob type.** Each bar counts every mob of that type on screen, piled or not: "Gurubashi Scout x23". A scout that wanders off from its pile still counts.
+  - A type with only one mob on screen gets no bar (unless it's a boss or guardian, or the nameplates above mobs are hidden).
+  - Two separate clumps of the same mob share one bar.
+  - The contribution strip's **As long as the pile is up** is now **As long as its bar is up**: as long as that mob type has a bar.
+- Collapse piles for the plates above the mobs still merges by clump on screen. **Sideways overlap to join a pile** only affects that now, so it moved to the Nameplates column under **Piles of mobs**.
+
 ## 0.17.1
 - The contribution strip's time is set in **[ ] h [ ] m [ ] s** boxes instead of a minutes slider: anything from 1 second to 2 hours. Type in any box and press Enter (Tab moves to the next box, Escape cancels). Your 0.17.0 setting carries over.
 - The first choice is now called **A set time back**. With **As long as the pile is up** selected, the time boxes are greyed out.
