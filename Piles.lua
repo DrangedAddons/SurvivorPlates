@@ -107,12 +107,12 @@ end
 local function ByAmount(a, b) return a.amount > b.amount end
 
 -- Piles: who's been hitting each mob, in one-second buckets kept for KEEP seconds (the
--- longest window). mob name -> { pruned = second, buckets = { [second] = { [unit or
+-- longest window, 2 hours). mob name -> { pruned = second, buckets = { [second] = { [unit or
 -- "other"] = { amount, color } } } }. Drawn as a thin strip along the bottom of the pile's
--- bar, split by each player's share, over the last pileShareMins minutes or the pile's whole
+-- bar, split by each player's share, over the last pileShareSecs seconds or the pile's whole
 -- life. It measures damage dealt, not health missing, so mobs joining and dying don't throw
 -- it off.
-local KEEP, STRIP_H = 1800, 3
+local KEEP, STRIP_H = 7200, 3
 local recentHits = {}
 local pileStart = {} -- pile id -> when its bar first showed
 
@@ -186,7 +186,7 @@ local function DrawStrip(b, p)
     if SP.Get("pileShareMode") == "pile" then
         since = math.floor(pileStart[p.id] or GetTime())
     else
-        since = math.floor(GetTime()) - math.floor(SP.Get("pileShareMins") * 60) + 1
+        since = math.floor(GetTime()) - SP.Get("pileShareSecs") + 1
     end
     local parts, total = Shares(p.name, since)
     if total <= 0 then

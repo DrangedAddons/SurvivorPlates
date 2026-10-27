@@ -42,8 +42,8 @@ SP.defaults = {
     pileBarsBelowY = -80, -- "below": the stack's top edge, px from the middle of the screen (+ is up)
     pileBarsGrow = "up", -- "free": "up" (fixed bottom, most health at the bottom) or "down" (the inverse)
     pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
-    pileShareMode = "window", -- contribution strip: "window" (the last pileShareMins) or "pile" (the pile's life)
-    pileShareMins = 0.5,
+    pileShareMode = "window", -- contribution strip: "window" (the last pileShareSecs) or "pile" (the pile's life)
+    pileShareSecs = 30, -- 1 s to 2 h
     worldPlates = true, -- false: hide every nameplate above the mobs, in any mode
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
@@ -84,6 +84,11 @@ local function LoadSettings()
     local key = CharKey()
     SurvivorPlatesDB.chars[key] = SurvivorPlatesDB.chars[key] or {}
     db = SurvivorPlatesDB.chars[key]
+    -- 0.17.0 saved the window in minutes.
+    if db.pileShareMins then
+        db.pileShareSecs = math.floor(db.pileShareMins * 60 + 0.5)
+        db.pileShareMins = nil
+    end
     for k, v in pairs(SP.defaults) do
         if db[k] == nil then db[k] = v end
     end

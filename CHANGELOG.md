@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.1
+- The contribution strip's time is set in **[ ] h [ ] m [ ] s** boxes instead of a minutes slider: anything from 1 second to 2 hours. Type in any box and press Enter (Tab moves to the next box, Escape cancels). Your 0.17.0 setting carries over.
+- The first choice is now called **A set time back**. With **As long as the pile is up** selected, the time boxes are greyed out.
+
 ## 0.17.0
 - **Contribution strip measures:** choose what the class-coloured strip on pile bars covers.
   - **The last few minutes**, set in **Minutes** (0.5 to 30, in half-minute steps; type it in the box or nudge it). Default is half a minute.

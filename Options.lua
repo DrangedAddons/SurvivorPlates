@@ -6,7 +6,7 @@ local LABELS = {
     above = "Above the bar", inside = "Inside the bar", hidden = "Hidden",
     none = "None", percent = "Percent", current = "Current", both = "Current / max",
     free = "Where you drag it", player = "Above your character", below = "Below your character",
-    window = "The last few minutes", pile = "As long as the pile is up",
+    window = "A set time back", pile = "As long as the pile is up",
     up = "Upward", down = "Downward",
 }
 
@@ -102,6 +102,97 @@ local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
     return s
 end
 
+-- A box you can click and type a number into. show() gives the text to show when you're not
+-- typing; apply(text) runs on Enter or clicking away. Escape puts the old value back.
+local function NumberBox(parent, width, show, apply)
+    local box = CreateFrame("EditBox", nil, parent)
+    box:SetWidth(width)
+    box:SetHeight(18)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(6)
+    box:SetJustifyH("CENTER")
+    Font(box, 11)
+    box:SetTextColor(1, 0.82, 0)
+    box:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 8,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    box:SetBackdropColor(0, 0, 0, 0.6)
+    box:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    box.Refresh = function()
+        if not box.editing then box:SetText(show()) end
+    end
+    box:SetScript("OnEditFocusGained", function()
+        this.editing = true
+        this:HighlightText()
+    end)
+    box:SetScript("OnEditFocusLost", function()
+        this.editing = false
+        if not this.cancelled then apply(this:GetText()) end
+        this.cancelled = false
+        this.Refresh()
+    end)
+    box:SetScript("OnEnterPressed", function() this:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function()
+        this.cancelled = true
+        this:ClearFocus()
+    end)
+    table.insert(widgets, box)
+    return box
+end
+
+-- A length of time as [ ]h [ ]m [ ]s boxes, saved in seconds. Tab moves to the next box.
+-- enabled(), if given, greys the boxes out and stops them taking input while it's false.
+local function TimeBoxes(parent, key, label, minS, maxS, x, y, enabled)
+    local title = Text(parent, 11)
+    title:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    title:SetText(label)
+    local parts = {
+        { unit = "h", get = function(t) return math.floor(t / 3600) end },
+        { unit = "m", get = function(t) return math.floor(math.mod(t, 3600) / 60) end },
+        { unit = "s", get = function(t) return math.mod(t, 60) end },
+    }
+    local boxes, labels = {}, { title }
+    local function Apply()
+        local total = 0
+        for i = 1, 3 do
+            local n = tonumber(boxes[i]:GetText()) or 0
+            total = total + math.max(0, math.floor(n)) * ({ 3600, 60, 1 })[i]
+        end
+        SP.Set(key, math.max(minS, math.min(maxS, total)))
+    end
+    for i = 1, 3 do
+        local part = parts[i]
+        local box = NumberBox(parent, 38, function() return tostring(part.get(SP.Get(key))) end, Apply)
+        box:SetMaxLetters(3)
+        box:SetPoint("TOPLEFT", parent, "TOPLEFT", x + (i - 1) * 62, y - 17)
+        local unit = Text(parent, 11, 0.6, 0.6, 0.6)
+        unit:SetPoint("LEFT", box, "RIGHT", 4, 0)
+        unit:SetText(part.unit)
+        boxes[i] = box
+        table.insert(labels, unit)
+    end
+    if enabled then
+        table.insert(widgets, {
+            Refresh = function()
+                local on = enabled()
+                for i = 1, 3 do
+                    if not on and boxes[i].editing then boxes[i]:ClearFocus() end
+                    boxes[i]:EnableMouse(on)
+                    boxes[i]:SetAlpha(on and 1 or 0.35)
+                end
+                for i = 1, table.getn(labels) do labels[i]:SetAlpha(on and 1 or 0.35) end
+            end,
+        })
+    end
+    for i = 1, 3 do
+        local nextBox = boxes[math.mod(i, 3) + 1]
+        boxes[i]:SetScript("OnTabPressed", function() nextBox:SetFocus() end)
+    end
+end
+
 -- A slider for settings you line up by the pixel: - and + buttons either side, and the value
 -- in a box under it that you can click and type into. Slider, buttons and box always agree:
 -- each one sets the value, and setting it refreshes all three.
@@ -140,44 +231,13 @@ local function NudgeSlider(parent, key, label, minV, maxV, step, x, y, suffix)
     Nudge("-", -step, "RIGHT", -182)
     Nudge("+", step, "LEFT", 182)
 
-    local box = CreateFrame("EditBox", nil, parent)
-    box:SetWidth(64)
-    box:SetHeight(18)
+    local box = NumberBox(parent, 64,
+        function() return FormatValue(SP.Get(KeyOf(key)), step) end,
+        function(text) Apply(text) end)
     box:SetPoint("TOP", s, "BOTTOM", 0, -3)
-    box:SetAutoFocus(false)
-    box:SetMaxLetters(6)
-    box:SetJustifyH("CENTER")
-    Font(box, 11)
-    box:SetTextColor(1, 0.82, 0)
-    box:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    box:SetBackdropColor(0, 0, 0, 0.6)
-    box:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
     local unit = Text(parent, 11, 0.6, 0.6, 0.6)
     unit:SetPoint("LEFT", box, "RIGHT", 4, 0)
     unit:SetText((string.gsub(suffix or "", "^ ", "")))
-    box.Refresh = function()
-        if not box.editing then box:SetText(FormatValue(SP.Get(KeyOf(key)), step)) end
-    end
-    box:SetScript("OnEditFocusGained", function()
-        this.editing = true
-        this:HighlightText()
-    end)
-    box:SetScript("OnEditFocusLost", function()
-        this.editing = false
-        Apply(this:GetText())
-        this.Refresh()
-    end)
-    box:SetScript("OnEnterPressed", function() this:ClearFocus() end)
-    box:SetScript("OnEscapePressed", function()
-        this.editing = false
-        this.Refresh()
-        this:ClearFocus()
-    end)
     table.insert(widgets, box)
     return s
 end
@@ -328,7 +388,8 @@ local function Build()
     Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -422)
     Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -460)
     Cycle(frame, "pileShareMode", "Contribution strip measures", R, -490)
-    NudgeSlider(frame, "pileShareMins", "Minutes (the last few minutes)", 0.5, 30, 0.5, R, -538, " min")
+    TimeBoxes(frame, "pileShareSecs", "How far back", 1, 7200, R, -538,
+        function() return SP.Get("pileShareMode") == "window" end)
 
     Check(frame, "minimapButton", "Show minimap button", L, -606)
 
