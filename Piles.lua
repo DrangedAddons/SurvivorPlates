@@ -170,12 +170,25 @@ local function Place()
     end
 end
 
--- Drag by the panel or its title strip while unlocked.
+-- Drag by the panel or its strip while unlocked. The bottom edge (and the strip under it)
+-- is the fixed point: it's what gets saved, and bars only ever grow upward from it.
+local dragging = false
 local function StartDrag()
-    if not SP.Get("pileBarsLocked") then panel:StartMoving() end
+    if SP.Get("pileBarsLocked") or AbovePlayer() then return end
+    dragging = true
+    -- Clamped only mid-drag: clamped otherwise, a tall stack reaching the top of the
+    -- screen would push the whole panel, bottom included, down.
+    if panel.SetClampedToScreen then panel:SetClampedToScreen(true) end
+    panel:StartMoving()
 end
 local function StopDrag()
+    if not dragging then return end
+    dragging = false
     panel:StopMovingOrSizing()
+    if panel.SetClampedToScreen then panel:SetClampedToScreen(false) end
+    -- Keep the client from saving its own top-left anchor for this frame and putting it
+    -- back later, which pins the top instead of the bottom.
+    if panel.SetUserPlaced then panel:SetUserPlaced(false) end
     SP.SetQuiet("pileBarsX", panel:GetLeft())
     SP.SetQuiet("pileBarsY", panel:GetBottom())
     Place()
@@ -234,6 +247,8 @@ local function Refresh()
         return
     end
     local unlocked = not SP.Get("pileBarsLocked") and not AbovePlayer()
+    -- Re-pin the bottom edge every refresh, in case anything else re-anchored the panel.
+    if not dragging then Place() end
     local list = {}
     for i = 1, table.getn(SP.pileList) do list[i] = SP.pileList[i] end
     Order(list)
@@ -287,8 +302,6 @@ local function Refresh()
     -- Keep the panel's size to its bars; unlocked and empty, it still shows one bar's room.
     local rows = math.max(shown, unlocked and 1 or 0)
     panel:SetHeight(math.max(1, rows * (BAR_H + SPACING) - SPACING))
-    -- Clamped only while you drag it; locked, being pushed back on screen would move the bottom.
-    if panel.SetClampedToScreen then panel:SetClampedToScreen(unlocked) end
     if unlocked then
         header:Show()
         panel:SetBackdropColor(0, 0.4, 1, 0.2)

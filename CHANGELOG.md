@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.2
+- **The pile bars' bottom edge and drag strip really stay put now.** Two things still moved them:
+  - While unlocked, the panel was kept on screen, so a stack growing into the top of the screen pushed the whole panel down. It's only kept on screen while you're dragging it now.
+  - The game could remember the dragged panel by its top-left corner and put it back that way, so it grew downward. The panel no longer lets the game save its position, and it re-pins its bottom edge every refresh.
+- Bars only ever grow upward from the bottom row.
+
 ## 0.12.1
 - The **drag to move** strip sits under the pile bars instead of on top, where it moved every time a bar came or went.
 
