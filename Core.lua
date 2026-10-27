@@ -301,28 +301,46 @@ end
 local STICK_TIME, ROWS_PER_WIDTH = 3.0, 6
 local live, byPlate, order, joinedAt, memberName = {}, {}, {}, {}, {}
 
--- Collapse mode. Mobs in this game never unpile once they've piled up, so a pile is
--- remembered until its mobs die: membership never expires and ignores the camera.
---  * A free plate joins a pile of mobs with the same name when it overlaps any member
---    sideways by at least `stackOverlap` % and is within reach of it. Bosses and guardians
---    never pile.
+-- Collapse mode. Mobs in this game never unpile once they've piled up, so piles are built
+-- to grab plates easily and practically never let go:
+--  * A free plate joins a pile of mobs with the same name when it's within PILE_ROWS of the
+--    game's plate rows of any member, and sideways within (1.5 - overlap) plate widths of it
+--    (1.2 widths at the default 30%). Bosses and guardians never pile.
+--  * Two piles of the same mob that come within that reach of each other merge.
+--  * A member only leaves when its mob dies. A plate the game hides for a while (off screen,
+--    out of range) keeps its place for GHOST_TIME and rejoins when it comes back.
 --  * Each pile shows one plate (the target, if it's in the pile, else the oldest member)
 --    with a count; the rest are hidden and can't be clicked.
+local PILE_ROWS, GHOST_TIME = 5, 60
+local lastSeen = {}
+
+local function PileReach(e, m, share)
+    return math.abs(e.x - m.x) <= (1.5 - share) * math.max(e.w, m.w)
+        and math.abs(e.y - m.y) <= PILE_ROWS * math.max(e.row, m.row)
+end
+
 local function ComputePiles(n, share)
+    local now = GetTime()
     local piles = {}
+    -- Last pass's piles. `ghosts` are members the game has hidden for now.
     for _, list in pairs(order) do
-        local pile
+        local pile = { live = {}, ghosts = {} }
         for i = 1, table.getn(list) do
-            local e = byPlate[list[i]]
-            -- The game reuses plate frames: a frame now showing another mob starts afresh.
-            if e and e.name ~= memberName[e.plate] then e = nil end
-            if e and not e.taken then
-                if pile then table.insert(pile, e) else pile = { e } end
+            local plate = list[i]
+            local e = byPlate[plate]
+            if e and e.name == memberName[plate] and not e.taken then
+                table.insert(pile.live, e)
                 e.taken = true
+            elseif not e and now - (lastSeen[plate] or 0) < GHOST_TIME then
+                table.insert(pile.ghosts, plate)
             end
+            -- Anything else is a frame the game reused for another mob: it starts afresh.
         end
-        if pile then table.insert(piles, pile) end
+        pile.name = memberName[list[1]]
+        if table.getn(pile.live) + table.getn(pile.ghosts) > 0 then table.insert(piles, pile) end
     end
+    -- A hidden plate coming back with the same mob slots back into its pile above. Everything
+    -- else that's free, bottom-up: join the nearest pile of the same mob, or start one.
     table.sort(live, function(a, b) return a.y < b.y end)
     for i = 1, n do
         local e = live[i]
@@ -331,39 +349,69 @@ local function ComputePiles(n, share)
             if e.name and not bigNames[e.name] then
                 for j = 1, table.getn(piles) do
                     local pile = piles[j]
-                    if pile[1].name == e.name then
-                        for k = 1, table.getn(pile) do
-                            local m = pile[k]
-                            local dx, dy = math.abs(e.x - m.x), math.abs(e.y - m.y)
-                            if (e.w + m.w) * 0.5 - dx >= share * math.min(e.w, m.w) and dy <= e.reach
-                                and (not bestD or dx + dy < bestD) then
-                                best, bestD = pile, dx + dy
+                    if pile.name == e.name then
+                        for k = 1, table.getn(pile.live) do
+                            local m = pile.live[k]
+                            if PileReach(e, m, share) then
+                                local d = math.abs(e.x - m.x) + math.abs(e.y - m.y)
+                                if not bestD or d < bestD then best, bestD = pile, d end
                             end
                         end
                     end
                 end
             end
-            if best then table.insert(best, e) else table.insert(piles, { e }) end
+            if best then
+                table.insert(best.live, e)
+            else
+                table.insert(piles, { live = { e }, ghosts = {}, name = e.name })
+            end
             e.taken = true
         end
     end
+    -- Merge piles of the same mob that have drifted into reach of each other.
+    for a = 1, table.getn(piles) do
+        local pa = piles[a]
+        if pa.name and not bigNames[pa.name] and table.getn(pa.live) > 0 then
+            for b = a + 1, table.getn(piles) do
+                local pb = piles[b]
+                if pb.name == pa.name and table.getn(pb.live) > 0 then
+                    local touch = false
+                    for i = 1, table.getn(pa.live) do
+                        for k = 1, table.getn(pb.live) do
+                            if not touch and PileReach(pa.live[i], pb.live[k], share) then touch = true end
+                        end
+                    end
+                    if touch then
+                        for k = 1, table.getn(pb.live) do table.insert(pa.live, pb.live[k]) end
+                        for k = 1, table.getn(pb.ghosts) do table.insert(pa.ghosts, pb.ghosts[k]) end
+                        pb.live, pb.ghosts = {}, {}
+                    end
+                end
+            end
+        end
+    end
+    -- Remember the piles, and pick the one plate each shows.
     for k in pairs(order) do order[k] = nil end
     for j = 1, table.getn(piles) do
         local pile = piles[j]
-        local count = table.getn(pile)
-        local shown = pile[1]
-        for k = 2, count do
-            if IsTarget(pile[k].plate, plates[pile[k].plate]) then shown = pile[k] end
-        end
+        local count = table.getn(pile.live)
         local list = {}
-        for k = 1, count do
-            local e = pile[k]
-            list[k] = e.plate
-            memberName[e.plate] = e.name
-            if e ~= shown then pileHidden[e.plate] = true end
+        if count > 0 then
+            local shown = pile.live[1]
+            for k = 2, count do
+                if IsTarget(pile.live[k].plate, plates[pile.live[k].plate]) then shown = pile.live[k] end
+            end
+            for k = 1, count do
+                local e = pile.live[k]
+                table.insert(list, e.plate)
+                memberName[e.plate] = e.name
+                lastSeen[e.plate] = now
+                if e ~= shown then pileHidden[e.plate] = true end
+            end
+            if count > 1 then pileCount[shown.plate] = count end
         end
-        if count > 1 then pileCount[shown.plate] = count end
-        order[pile[1].plate] = list
+        for k = 1, table.getn(pile.ghosts) do table.insert(list, pile.ghosts[k]) end
+        if list[1] then order[list[1]] = list end
     end
 end
 

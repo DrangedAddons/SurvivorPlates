@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+- **Piles grab plates much more easily.** A plate joins a pile of the same mob from up to five of the game's plate rows away (was three). Sideways it only has to be within 1.2 plate widths of any pile member at the default 30% (lower the slider to grab from even further).
+- **Piles merge.** Two piles of the same mob that come within that reach of each other become one pile.
+- **Plates practically never leave a pile.** Only a dead mob leaves. A plate the game hides for a while (the mob goes off screen or out of range) keeps its place for a minute and drops straight back into its pile when it reappears. Before, it came back as a separate plate.
+
 ## 0.4.0
 - **Collapse piles** mode. Mobs of the same kind that pile up share one plate with a count, like "Gurubashi Scout x12". The rest of the pile's plates are hidden and can't be clicked.
   - A plate joins a pile of the same mob when it overlaps one of the pile's plates sideways by at least the set amount and is close by. Bosses and guardians never pile.
