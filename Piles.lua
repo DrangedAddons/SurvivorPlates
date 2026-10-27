@@ -7,6 +7,9 @@ local SP = SurvivorPlates
 local BAR_W, BAR_H, SPACING = 200, 16, 3
 -- The same bar texture SurvivorsDragonUi gives its plates.
 local BAR_TEX = "Interface\\AddOns\\SurvivorsDragonUi\\media\\tex\\nameplates\\kui_bar.blp"
+-- The skull SurvivorsDragonUi's run timer uses; red for the final boss, gold for guardians.
+local SKULL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull"
+local SKULL_COLOR = { boss = { 1, 1, 1 }, final = { 1, 0.3, 0.3 }, guardian = { 1, 0.82, 0 } }
 
 local panel = CreateFrame("Frame", "SurvivorPlatesPileBars", UIParent)
 panel:SetWidth(BAR_W)
@@ -60,6 +63,12 @@ local function Bar(i)
     health:SetStatusBarColor(0.7, 0.2, 0.1)
     health:SetMinMaxValues(0, 1)
     health:EnableMouse(false)
+    local skull = health:CreateTexture(nil, "OVERLAY")
+    skull:SetTexture(SKULL)
+    skull:SetWidth(BAR_H - 2)
+    skull:SetHeight(BAR_H - 2)
+    skull:SetPoint("LEFT", health, "LEFT", 2, 0)
+    skull:Hide()
     local name = health:CreateFontString(nil, "OVERLAY")
     Font(name, 10)
     name:SetJustifyH("LEFT")
@@ -82,7 +91,7 @@ local function Bar(i)
     hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
     hl:SetAllPoints(b)
     hl:SetBlendMode("ADD")
-    b.health, b.name, b.count, b.edge = health, name, count, edge
+    b.health, b.name, b.count, b.edge, b.skull = health, name, count, edge, skull
     b:SetScript("OnClick", function()
         -- 1.12 has no unit token for a plate; target the nearest mob with this name.
         if this.mob then TargetByName(this.mob, true) end
@@ -123,12 +132,14 @@ header:RegisterForDrag("LeftButton")
 header:SetScript("OnDragStart", StartDrag)
 header:SetScript("OnDragStop", StopDrag)
 
--- Order, bottom to top: most health first. Two piles only swap once one has SWAP_MARGIN
--- more health than the other, so piles that are close don't keep trading places.
+-- Order, bottom to top: bosses and guardians first, then most health first. Two piles only
+-- swap once one has SWAP_MARGIN more health than the other, so piles that are close don't
+-- keep trading places.
 local SWAP_MARGIN = 0.15
 local lastRank = {} -- pile id -> its place last refresh
 
 local function Before(a, b)
+    if (a.boss and 1 or 0) ~= (b.boss and 1 or 0) then return a.boss ~= nil end
     local ra, rb = lastRank[a.id], lastRank[b.id]
     if ra and rb then
         local big = math.max(a.hp, b.hp)
@@ -176,6 +187,15 @@ local function Refresh()
         local b, p = Bar(i), list[i]
         b.mob = p.name
         b.name:SetText(p.name)
+        if p.boss then
+            local c = SKULL_COLOR[p.boss] or SKULL_COLOR.boss
+            b.skull:SetVertexColor(c[1], c[2], c[3])
+            b.skull:Show()
+            b.name:SetPoint("LEFT", b.health, "LEFT", BAR_H + 2, 0)
+        else
+            b.skull:Hide()
+            b.name:SetPoint("LEFT", b.health, "LEFT", 4, 0)
+        end
         b.count:SetText("x" .. p.count)
         b.health:SetValue(p.health)
         if p.target then b.edge:Show() else b.edge:Hide() end

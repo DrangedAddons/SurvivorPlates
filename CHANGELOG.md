@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0
+- **Bosses and guardians are pinned to the bottom of the pile bars**, below every pile, with a skull on their bar: white for bosses, red for the final boss, gold for guardians. They're listed even on their own, so they're always there while they're on screen.
+- Among themselves they're ordered by health like the piles.
+
 ## 0.9.0
 - **Pile bars are ordered by health, most at the bottom.** A pile's health is its members' health added up. The bottom bar is the biggest pile and changes least; small piles you're finishing off sit at the top.
 - Two piles only swap places once one has 15% more health than the other, so piles with similar health stop flipping back and forth.
