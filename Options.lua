@@ -209,14 +209,25 @@ local function Build()
     close:SetScript("OnClick", function() frame:Hide() end)
 
     frame:SetScript("OnShow", function() SP.RefreshOptions() end)
+    -- Keep the plate count in the corner current while the window is open.
+    local sinceStatus = 0
+    frame:SetScript("OnUpdate", function()
+        sinceStatus = sinceStatus + (arg1 or 0)
+        if sinceStatus < 0.5 then return end
+        sinceStatus = 0
+        if SP.IsInstalled() then
+            local seen, pushed = SP.StackStats()
+            frame.status:SetText(seen .. " plates, " .. pushed .. " stacked")
+        end
+    end)
 end
 
 function SP.RefreshOptions()
     if not frame or not frame:IsShown() then return end
     for i = 1, table.getn(widgets) do widgets[i].Refresh() end
-    local shown = SP.PlateCount()
     if SP.IsInstalled() then
-        frame.status:SetText(shown .. " plates shown")
+        local seen, pushed = SP.StackStats()
+        frame.status:SetText(seen .. " plates, " .. pushed .. " stacked")
     else
         frame.status:SetText("|cffff5555not hooked|r")
     end
@@ -239,8 +250,10 @@ SlashCmdList["SURVIVORPLATES"] = function(msg)
         SP.Print("minimap button " .. (SP.Get("minimapButton") and "shown." or "hidden. /asp minimap brings it back."))
     elseif msg == "status" then
         local shown, all = SP.PlateCount()
+        local seen, pushed, most = SP.StackStats()
         SP.Print("v" .. SP.version .. ", " .. (SP.IsInstalled() and "hooked into SurvivorsDragonUi" or "NOT hooked")
-            .. ", " .. shown .. " of " .. all .. " known plates shown.")
+            .. ", " .. shown .. " of " .. all .. " known plates shown. Stacking: " .. SP.Get("stackMode")
+            .. ", " .. pushed .. " of " .. seen .. " pushed up, highest push " .. most .. " px.")
     else
         SP.ToggleOptions()
     end

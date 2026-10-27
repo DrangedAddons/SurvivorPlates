@@ -275,9 +275,15 @@ local function ComputeStack()
     for plate, data in pairs(plates) do
         local style = data.style
         if plate:IsShown() and style and style.visual:IsShown() and not data.presentationMasked then
-            local x, y = data.bar:GetCenter()
+            local anchor = data.bar
+            local x, y = anchor:GetCenter()
+            if not x then
+                -- Positions only matter relative to each other, so the plate's own centre will do.
+                anchor = plate
+                x, y = plate:GetCenter()
+            end
             if x and y then
-                local bs = data.bar:GetEffectiveScale()
+                local bs = anchor:GetEffectiveScale()
                 local eff = style.visual:GetEffectiveScale()
                 local h = db.height * eff
                 if db.namePos == "above" then h = h + (db.fontSize + 1) * eff end
@@ -415,6 +421,22 @@ events:SetScript("OnUpdate", function()
 end)
 
 function SP.IsInstalled() return installed end
+
+-- How many plates the last stacking pass saw, how many it pushed up, and the biggest push.
+function SP.StackStats()
+    local seen, pushed, most = 0, 0, 0
+    for plate, data in pairs(plates) do
+        if plate:IsShown() and data.style and data.style.visual:IsShown() then
+            seen = seen + 1
+            local t = targets[plate] or 0
+            if t > 0.5 then
+                pushed = pushed + 1
+                if t > most then most = t end
+            end
+        end
+    end
+    return seen, pushed, math.floor(most + 0.5)
+end
 function SP.PlateCount()
     local shown, all = 0, 0
     for plate in pairs(plates) do

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+- The settings window's top-right corner now shows how many plates are on screen and how many are stacked, updated live. It used to show a count from when the window opened.
+- `/asp status` also says how many plates were pushed up and the biggest push, to check whether stacking is doing anything.
+- Stacking falls back to the plate's own position if its health bar has none yet.
+
 ## 0.2.0
 - **Minimap button:** click it to open the settings, drag it to move it around the minimap. It sits on the edge of SurvivorsDragonUi's square minimap like its other buttons.
 - **Show minimap button** tick box in the settings, and `/asp minimap` to show or hide it. Reset to defaults leaves the button and its position alone.
