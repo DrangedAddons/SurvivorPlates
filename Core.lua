@@ -42,7 +42,7 @@ SP.defaults = {
     pileBarsHeight = 80, -- "player"/"below": how far from the middle of the screen the stack starts
     pileBarsGrow = "up", -- "free": "up" (fixed bottom, most health at the bottom) or "down" (the inverse)
     pileDamageColors = true, -- colour each damage chunk by the class of whoever dealt most of it
-    worldPlates = true, -- false: with pile bars on in Collapse mode, hide every plate in the world
+    worldPlates = true, -- false: hide every nameplate above the mobs, in any mode
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
     minimapAngle = 225, -- degrees around the minimap, 0 = right
@@ -248,7 +248,7 @@ local function ApplyLive(plate, data)
 
     local alpha = 1
     if db.fadeOthers and UnitExists("target") and not isTarget then alpha = db.otherAlpha end
-    if pileHidden[plate] then alpha = 0 end
+    if pileHidden[plate] or not db.worldPlates then alpha = 0 end
     if math.abs(style.visual:GetAlpha() - alpha) > 0.001 then style.visual:SetAlpha(alpha) end
 
     local showEdge = isTarget and db.targetHighlight
@@ -306,14 +306,11 @@ local function Joins(e, m, sameMob, share)
     return Touching(e, m) or (sameMob and PileReach(e, m, share))
 end
 
--- World plates are hidden only when the pile bars can stand in for them.
-local function WorldPlatesHidden()
-    return not db.worldPlates and db.pileBars and db.stackMode == "collapse"
-end
-
 local function ComputePiles(n, share)
     local now = GetTime()
-    local hideAll = WorldPlatesHidden()
+    -- With the world plates hidden the pile bars list single mobs too, so nothing goes missing.
+    local hideAll = not db.worldPlates
+    local collapse = db.stackMode == "collapse"
     local piles = {}
     -- Last pass's piles. `ghosts` are members the game has hidden for now.
     for _, list in pairs(order) do
@@ -401,9 +398,9 @@ local function ComputePiles(n, share)
                 table.insert(list, e.plate)
                 memberName[e.plate] = e.name
                 lastSeen[e.plate] = now
-                if e ~= shown or hideAll then pileHidden[e.plate] = true end
+                if collapse and e ~= shown then pileHidden[e.plate] = true end
             end
-            if count > 1 then pileCount[shown.plate] = count end
+            if collapse and count > 1 then pileCount[shown.plate] = count end
             if count > 1 or hideAll or bigNames[shown.name or ""] then
                 -- For the pile bars: the pile's average health and its health added up, read
                 -- off each member's bar.
@@ -437,7 +434,8 @@ local function ComputeCollapse()
         for k in pairs(order) do order[k] = nil end
         lastMode = db.stackMode
     end
-    if db.stackMode ~= "collapse" or (db.combatOnly and not UnitAffectingCombat("player")) then
+    -- Piles feed both Collapse mode and the pile bars; with neither on there's nothing to do.
+    if (db.stackMode ~= "collapse" and not db.pileBars) or (db.combatOnly and not UnitAffectingCombat("player")) then
         for k in pairs(order) do order[k] = nil end
         return
     end
@@ -484,7 +482,7 @@ local function OnUpdate()
     for plate, data in pairs(plates) do
         if plate:IsShown() and data.style then
             -- A plate hidden in a pile mustn't be an invisible click target.
-            local hidden = pileHidden[plate] and not data.presentationMasked
+            local hidden = (pileHidden[plate] or not db.worldPlates) and not data.presentationMasked
             if hidden and not data.spClickOff then
                 plate:SetHitRectInsets(1000000, 1000000, 1000000, 1000000)
                 data.spClickOff = true

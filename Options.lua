@@ -34,6 +34,19 @@ local function Heading(parent, text, x, y)
     fs:SetText(text)
 end
 
+-- A smaller grey label for a group of settings inside a column.
+local function SubHeading(parent, text, x, y)
+    local fs = Text(parent, 11, 0.6, 0.6, 0.6)
+    fs:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    fs:SetText(text)
+    local line = parent:CreateTexture(nil, "ARTWORK")
+    line:SetTexture("Interface\\Buttons\\WHITE8X8")
+    line:SetVertexColor(1, 1, 1, 0.15)
+    line:SetHeight(1)
+    line:SetPoint("LEFT", fs, "RIGHT", 6, 0)
+    line:SetPoint("RIGHT", parent, "LEFT", x + 220, 0)
+end
+
 local function FormatValue(value, step, suffix)
     if step < 1 then return string.format("%.2f", value) .. (suffix or "") end
     return tostring(math.floor(value + 0.5)) .. (suffix or "")
@@ -65,6 +78,11 @@ local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
         value:SetText(FormatValue(v, step, suffix))
         if not this.refreshing and SP.Get(key) ~= v then SP.Set(key, v) end
     end)
+    -- The mouse wheel nudges it one step.
+    s:EnableMouseWheel(true)
+    s:SetScript("OnMouseWheel", function()
+        this:SetValue(this:GetValue() + (arg1 > 0 and step or -step))
+    end)
     s.Refresh = function()
         s.refreshing = true
         s:SetValue(SP.Get(key))
@@ -72,6 +90,40 @@ local function Slider(parent, key, label, minV, maxV, step, x, y, suffix)
         s.refreshing = false
     end
     table.insert(widgets, s)
+    return s
+end
+
+-- A slider with - and + buttons either side, for settings you line up by the pixel.
+local function NudgeSlider(parent, key, label, minV, maxV, step, x, y, suffix)
+    local s = Slider(parent, key, label, minV, maxV, step, x + 20, y, suffix)
+    s:SetWidth(180)
+    local function Nudge(text, delta, point, xOff)
+        local b = CreateFrame("Button", nil, parent)
+        b:SetWidth(18)
+        b:SetHeight(18)
+        b:SetPoint(point, s, point, xOff, 0)
+        b:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8X8",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 8,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 },
+        })
+        b:SetBackdropColor(0, 0, 0, 0.5)
+        b:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        local fs = Text(b, 12, 1, 0.82, 0)
+        fs:SetPoint("CENTER", b, "CENTER", 0, 1)
+        fs:SetText(text)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        hl:SetAllPoints(b)
+        hl:SetBlendMode("ADD")
+        b:SetScript("OnClick", function()
+            local v = math.max(minV, math.min(maxV, SP.Get(key) + delta))
+            SP.Set(key, v)
+        end)
+    end
+    Nudge("-", -step, "RIGHT", -182)
+    Nudge("+", step, "LEFT", 182)
     return s
 end
 
@@ -147,7 +199,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "SurvivorPlatesOptions", UIParent)
     frame:SetWidth(540)
-    frame:SetHeight(720)
+    frame:SetHeight(660)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
@@ -177,38 +229,49 @@ local function Build()
     frame.status = status
 
     local L, R = 20, 290
-    Heading(frame, "Piles", L, -44)
-    Cycle(frame, "stackMode", "Mode", L, -66)
-    Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, L, -116, "%")
-    Check(frame, "combatOnly", "Only collapse in combat", L, -148)
+    -- Column divider.
+    local divider = frame:CreateTexture(nil, "ARTWORK")
+    divider:SetTexture("Interface\\Buttons\\WHITE8X8")
+    divider:SetVertexColor(1, 1, 1, 0.12)
+    divider:SetWidth(1)
+    divider:SetPoint("TOP", frame, "TOPLEFT", 270, -44)
+    divider:SetPoint("BOTTOM", frame, "BOTTOMLEFT", 270, 84)
 
-    Heading(frame, "Size", R, -44)
-    Slider(frame, "width", "Width", 40, 250, 1, R, -66, " px")
-    Slider(frame, "height", "Height", 4, 40, 1, R, -106, " px")
-    Slider(frame, "scale", "Scale", 0.5, 2, 0.05, R, -146)
-    Slider(frame, "fontSize", "Font size", 6, 20, 1, R, -186)
-    Cycle(frame, "namePos", "Name", R, -222)
-    Cycle(frame, "healthText", "Health text", R, -270)
+    -- Left: the nameplates above the mobs. These apply in every mode.
+    Heading(frame, "Nameplates", L, -44)
+    Check(frame, "worldPlates", "Show nameplates above mobs", L, -66)
+    Cycle(frame, "stackMode", "Piles of mobs", L, -94)
+    SubHeading(frame, "Size", L, -146)
+    Slider(frame, "width", "Width", 40, 250, 1, L, -162, " px")
+    Slider(frame, "height", "Height", 4, 40, 1, L, -202, " px")
+    Slider(frame, "scale", "Scale", 0.5, 2, 0.05, L, -242)
+    Slider(frame, "fontSize", "Font size", 6, 20, 1, L, -282)
+    Cycle(frame, "namePos", "Name", L, -318)
+    Cycle(frame, "healthText", "Health text", L, -364)
+    SubHeading(frame, "Target and bosses", L, -414)
+    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -430)
+    Check(frame, "targetHighlight", "Gold border on the target", L, -470)
+    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -494)
+    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -518)
+    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -558)
 
-    Heading(frame, "Target and priority", L, -190)
-    Slider(frame, "targetScale", "Target scale", 1, 2, 0.05, L, -212)
-    Slider(frame, "otherAlpha", "Faded opacity", 0.1, 1, 0.05, L, -252)
-    Slider(frame, "bossScale", "Boss and guardian scale", 1, 2.5, 0.05, L, -292)
-    Check(frame, "targetHighlight", "Gold border on the target", L, -324)
-    Check(frame, "fadeOthers", "Fade plates that aren't the target", L, -348)
-    Check(frame, "minimapButton", "Show minimap button", L, -380)
+    -- Right: the pile bars panel, and how piles form (shared with Collapse piles).
+    Heading(frame, "Pile bars", R, -44)
+    Check(frame, "pileBars", "Show pile bars", R, -66)
+    SubHeading(frame, "How piles form", R, -98)
+    Slider(frame, "stackOverlap", "Sideways overlap to join", 0, 100, 5, R, -114, "%")
+    Check(frame, "combatOnly", "Only form piles in combat", R, -150)
+    SubHeading(frame, "Placement", R, -184)
+    Cycle(frame, "pileBarsAnchor", "Position", R, -200)
+    Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -246)
+    NudgeSlider(frame, "pileBarsHeight", "Vertical offset (above / below you)", -300, 500, 1, R, -292, " px")
+    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -330)
+    SubHeading(frame, "Look", R, -364)
+    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -380)
+    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -420)
+    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -458)
 
-    -- Pile bars: Collapse piles mode only.
-    Heading(frame, "Pile bars", R, -318)
-    Check(frame, "pileBars", "Show pile bars", R, -340)
-    Check(frame, "worldPlates", "Show nameplates in the world", R, -364)
-    Cycle(frame, "pileBarsAnchor", "Position", R, -392)
-    Cycle(frame, "pileBarsGrow", "Grow (where you drag it)", R, -440)
-    Slider(frame, "pileBarsHeight", "Distance from your character", -200, 400, 5, R, -488, " px")
-    Check(frame, "pileBarsLocked", "Lock pile bars (untick to move)", R, -528)
-    Slider(frame, "pileBarsMax", "Most pile bars", 1, 30, 1, R, -560)
-    Slider(frame, "pileBarsScale", "Pile bars scale", 0.5, 2, 0.05, R, -600)
-    Check(frame, "pileDamageColors", "Damage in the dealer's class colour", R, -636)
+    Check(frame, "minimapButton", "Show minimap button", L, -606)
 
     local reset = PlainButton(frame, "Reset to defaults", 150)
     reset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)

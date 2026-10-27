@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0
+- **Settings window redesigned into two columns.**
+  - **Left: Nameplates**, everything about the plates above the mobs: **Show nameplates above mobs**, **Piles of mobs** (Spread or Collapse piles), size, name, health text, target and boss settings.
+  - **Right: Pile bars**, everything about the panel: **Show pile bars**, how piles form (sideways overlap, only in combat), placement (position, grow, distance, lock) and look (most bars, scale, damage colours).
+  - **Show minimap button** sits at the bottom.
+- **Show nameplates above mobs** now works in any mode. Untick it and every plate above the mobs is hidden and can't be clicked, whatever else is set.
+- **Pile bars no longer need Collapse piles mode.** With **Spread**, plates stay one per mob and the pile bars still group them. Collapse piles only decides whether the plates above the mobs merge.
+- "Only collapse in combat" is now **Only form piles in combat**, since it applies to both.
+- **Vertical offset (above / below you)**, formerly Distance from your character, moves in 1 px steps from -300 to 500, with - and + buttons to nudge the pile bars into line with your UI.
+- The mouse wheel nudges any slider by one step.
+
 ## 0.13.0
 - **Grow (where you drag it):** **Upward** (as before: the drag strip and bottom row stay put, most health at the bottom) or **Downward**, the inverse: the drag strip sits on top, the top row stays put, most health at the top, and bars add downward.
 - **Position: Below your character.** The stack hangs below the middle of the screen and grows downward. Above your character still grows upward.

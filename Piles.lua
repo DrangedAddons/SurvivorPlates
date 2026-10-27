@@ -1,6 +1,6 @@
 -- Pile bars: a panel that lists each collapsed pile as its own bar, like boss bars.
 -- Each bar shows the mob's name, how many are in the pile and their average health.
--- Click a bar to target one of that mob. Shown only in Collapse piles mode. It sits where
+-- Click a bar to target one of that mob. Works in either nameplate mode. It sits where
 -- you drag it, or above your character: the camera follows you, so that's a fixed height
 -- above the middle of the screen (the game tells addons nothing better).
 local SP = SurvivorPlates
@@ -276,7 +276,7 @@ local function Order(list)
 end
 
 local function Refresh()
-    local on = SP.Get("pileBars") and SP.Get("stackMode") == "collapse"
+    local on = SP.Get("pileBars")
     if not on then
         panel:Hide()
         return

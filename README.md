@@ -6,26 +6,32 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
 
 ## Settings
 
-**Piles**
-- **Mode:** **Spread** (the default) leaves plates where the game puts them. The game already spreads them so they never overlap. **Collapse piles** shows one plate per pile of mobs, with a count ("Gurubashi Scout x12"). The pile's other plates are hidden and can't be clicked.
-  - A plate that touches any plate in a pile joins it, whatever the mob. Plates of the same mob are also picked up from a few plate rows away, and piles that touch merge.
-  - A plate only leaves its pile when its mob dies. A plate the game hides for a moment (off screen, out of range) keeps its place for a minute.
-  - If your target is in a pile, the pile shows your target's plate.
-  - Bosses and guardians are never piled.
-- **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
-- **Only collapse in combat.**
-- **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Bosses and guardians are pinned to the bottom with a skull (white boss, red final boss, gold guardian). Above them, bars are ordered by the pile's total health, most at the bottom, and stack upward. Two piles only swap once one has 15% more health, so the order stays steady.
-  - **Position:** **Where you drag it** (untick **Lock pile bars** to move it), **Above your character** or **Below your character**. The camera keeps your character in the middle of the screen, so above or below means a set distance from the middle; **Distance from your character** adjusts it.
-  - **Grow (where you drag it):** **Upward** keeps the bottom row and drag strip still with the most health at the bottom; **Downward** is the inverse. Above your character always grows up, below always down.
-  - **Show nameplates in the world:** untick it to hide every enemy plate in the world and use only the pile bars. The bars then list single mobs too.
-  - Damage taken shows as a chunk on the bar that holds for a moment, then drains away. It's in the class colour of whoever dealt most of it (your partner's only if the game reports their hits in the combat log; check with `/asp combatlog`). **Damage in the dealer's class colour** turns that off and uses pale gold.
-  - **Most pile bars** and **Pile bars scale** set its size.
+The window has two columns. Every change shows at once, and the mouse wheel nudges any slider.
+
+**Nameplates** (left): the plates above the mobs. These apply in every mode.
+- **Show nameplates above mobs:** untick it to hide every plate above the mobs. They can't be clicked either. The pile bars then list single mobs too, so nothing goes missing.
+- **Piles of mobs:** **Spread** (the default) leaves plates where the game puts them, one per mob. **Collapse piles** shows one plate per pile, with a count ("Gurubashi Scout x12"); the pile's other plates are hidden and can't be clicked. If your target is in a pile, the pile shows your target's plate.
+- **Size:** width, height, scale, font size, name position (above, inside, hidden), health text.
+- **Target and bosses:** target scale, a gold border on the target, fading other plates while you have a target, and a separate scale for bosses and guardians.
 
 There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.
 
-**Size:** width, height, scale, font size, name position (above, inside, hidden), health text.
+**Pile bars** (right): a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. It works with either nameplate mode. Click a bar to target the nearest mob with that name.
+- **How piles form** (shared with Collapse piles):
+  - A plate that touches any plate in a pile joins it, whatever the mob. Plates of the same mob are also picked up from a few plate rows away, and piles that touch merge.
+  - A plate only leaves its pile when its mob dies. A plate the game hides for a moment (off screen, out of range) keeps its place for a minute.
+  - Bosses and guardians are never piled.
+  - **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
+  - **Only form piles in combat.**
+- **Order:** bosses and guardians are pinned nearest the fixed edge with a skull (white boss, red final boss, gold guardian). After them, bars go by the pile's total health, most first. Two piles only swap once one has 15% more health, so the order stays steady.
+- **Placement:**
+  - **Position:** **Where you drag it** (untick **Lock pile bars** to move it), **Above your character** or **Below your character**. The camera keeps your character in the middle of the screen, so above or below means a set offset from the middle.
+  - **Grow (where you drag it):** **Upward** keeps the bottom row and drag strip still with the most health at the bottom; **Downward** is the inverse. Above your character always grows up, below always down.
+  - **Vertical offset (above / below you):** lines the stack up with your UI, with - and + buttons to nudge it a pixel at a time.
+  - The fixed edge never moves. Bars that don't fit before the edge of the screen are left off, least health first.
+- **Look:** **Most pile bars**, **Pile bars scale**, and **Damage in the dealer's class colour**: damage taken shows as a chunk on the bar that holds for a moment, then drains away, in the class colour of whoever dealt most of it (your partner's only if the game reports their hits in the combat log; check with `/asp combatlog`). Unticked, chunks are pale gold.
 
-**Target and priority:** target scale, a gold border on the target, fading other plates while you have a target, and a separate scale for bosses and guardians.
+**Show minimap button** is at the bottom of the window.
 
 Settings are per character.
 
