@@ -16,6 +16,9 @@ SP.defaults = {
     stackMode = "spread", -- "spread" (the game's own layout) or "collapse" (one plate per pile)
     stackOverlap = 30, -- lower lets a pile pick up same-mob plates from further to the side
     combatOnly = false,
+    -- Experiment: shrink the game's own plate frames (not the skin). The game spaces plates
+    -- one frame apart, so if it measures the frame as it is now, smaller frames pile up.
+    plateFrameSize = 100, -- percent of the game's frame size; 100 leaves it alone
     -- Size
     width = 100,
     height = 10,
@@ -461,6 +464,44 @@ local function ComputeCollapse()
     ComputePiles(n, db.stackOverlap / 100)
 end
 
+-- Set every frame while on, in case the game puts its own size back.
+local function Squeeze(plate, data)
+    local pct = db.plateFrameSize
+    if pct >= 100 then
+        if data.spOrigH then
+            plate:SetWidth(data.spOrigW)
+            plate:SetHeight(data.spOrigH)
+            data.spOrigW, data.spOrigH = nil, nil
+        end
+        return
+    end
+    if not data.spOrigH then
+        data.spOrigW, data.spOrigH = plate:GetWidth(), plate:GetHeight()
+        if not data.spOrigH or data.spOrigH <= 0 then
+            data.spOrigW, data.spOrigH = nil, nil
+            return
+        end
+    end
+    local w, h = data.spOrigW * pct / 100, data.spOrigH * pct / 100
+    if math.abs(plate:GetHeight() - h) > 0.1 then plate:SetHeight(h) end
+    if math.abs(plate:GetWidth() - w) > 0.1 then plate:SetWidth(w) end
+end
+
+-- /asp status: one shown plate's frame size now, and the size it started at.
+function SP.PlateFrameInfo()
+    for plate, data in pairs(plates) do
+        if plate:IsShown() then
+            local w, h = plate:GetWidth() or 0, plate:GetHeight() or 0
+            local s = string.format("%dx%d", math.floor(w + 0.5), math.floor(h + 0.5))
+            if data.spOrigH then
+                s = s .. string.format(" (game's size %dx%d)", math.floor(data.spOrigW + 0.5), math.floor(data.spOrigH + 0.5))
+            end
+            return s
+        end
+    end
+    return "none shown"
+end
+
 local sinceCollapse = 0
 local function OnUpdate()
     if not installed then return end
@@ -471,6 +512,7 @@ local function OnUpdate()
     end
     for plate, data in pairs(plates) do
         if plate:IsShown() and data.style then
+            Squeeze(plate, data)
             -- A plate hidden in a pile mustn't be an invisible click target.
             local hidden = pileHidden[plate] and not data.presentationMasked
             if hidden and not data.spClickOff then

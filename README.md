@@ -14,6 +14,7 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
   - Bosses and guardians are never piled.
 - **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
 - **Only collapse in combat.**
+- **Game plate frame size (test):** shrinks the game's own plate frames under the skin. If the game spaces plates by their current size, lower values let plates overlap. Best tried in Spread mode.
 - **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Bosses and guardians come first, then the biggest piles.
   - **Position:** **Where you drag it** (untick **Lock pile bars** to move it) or **Above your character**. The camera keeps your character in the middle of the screen, so above your character means a set height above the middle; **Height above your character** adjusts it.
   - **Show nameplates in the world:** untick it to hide every enemy plate in the world and use only the pile bars. The bars then list single mobs too.

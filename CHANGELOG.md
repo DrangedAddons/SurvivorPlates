@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+- **Test: Game plate frame size.** Shrinks the game's own plate frames, under SurvivorsDragonUi's skin, to a percentage of their size (100% = untouched, the default). The game keeps plates one frame apart, so if it goes by the frame's current size, smaller frames let the bars pile on top of each other above each mob. If plates stay spread at 5%, the game uses a fixed size and this can't work.
+  - `/asp status` shows a plate frame's size now and the game's size, to check the game isn't putting it back.
+  - Smaller frames are also a smaller click area on each plate.
+
 ## 0.7.0
 - **Pile bars above your character.** New **Position** setting for the pile bars: **Where you drag it** (as before, the default) or **Above your character**. Above your character, the stack grows upward from a set height above the middle of the screen, where the camera keeps you. **Height above your character** moves it up or down.
 - **Show nameplates in the world** (on by default). Untick it, with pile bars on in Collapse piles mode, and every enemy plate in the world is hidden and can't be clicked. The pile bars then list every pile, single mobs included, so nothing goes missing. Click a bar to target that mob.
