@@ -21,10 +21,11 @@ panel:SetMovable(true)
 panel:RegisterForDrag("LeftButton")
 panel:Hide()
 
--- Shown only while unlocked: a title strip to grab, and a backdrop marking the area.
+-- Shown only while unlocked: a strip under the bars to grab (the bottom edge stays put),
+-- and a backdrop marking the area.
 local header = CreateFrame("Frame", nil, panel)
-header:SetPoint("BOTTOMLEFT", panel, "TOPLEFT", 0, 2)
-header:SetPoint("BOTTOMRIGHT", panel, "TOPRIGHT", 0, 2)
+header:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -2)
+header:SetPoint("TOPRIGHT", panel, "BOTTOMRIGHT", 0, -2)
 header:SetHeight(16)
 header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
 header:SetBackdropColor(0, 0, 0, 0.7)

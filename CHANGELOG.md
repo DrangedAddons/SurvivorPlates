@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.12.1
+- The **drag to move** strip sits under the pile bars instead of on top, where it moved every time a bar came or went.
+
 ## 0.12.0
 - **Damage chunks in class colour.** Each pile bar's damage chunk takes the class colour of whoever dealt most of that damage, read from the combat log. Solo, that's your colour. In coop your partner's hits show in their colour if the game reports them; otherwise their chunks stay pale gold. **Damage in the dealer's class colour** turns it off.
 - `/asp combatlog`: run it, fight for a bit, run it again, and it lists which combat log events the game sent with a sample line from each. Use it in coop to check whether your partner's hits come through.
