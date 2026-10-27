@@ -14,6 +14,7 @@ Click the minimap button or type `/asp` in game to open the settings. Every chan
   - Bosses and guardians are never piled.
 - **Sideways overlap to join:** lower picks up same-mob plates from further to the side.
 - **Only collapse in combat.**
+- **Pile bars:** a panel listing each pile as a bar, like boss bars, with the mob's name, the pile's count and its average health. Click a bar to target the nearest mob with that name. Untick **Lock pile bars** to drag it somewhere else. **Most pile bars** and **Pile bars scale** set its size.
 
 There's no overlap mode. The game spreads its plates before any addon sees them, and doesn't tell addons where a mob's head really is, so plates can't be put back on top of each other.
 

@@ -6,6 +6,7 @@
 
 SurvivorPlates = {}
 local SP = SurvivorPlates
+SP.pileList = {} -- this pass's piles of 2+: { name, count, health (0-1 average), target }
 SP.version = GetAddOnMetadata and GetAddOnMetadata("SurvivorPlates", "Version") or "?"
 
 SP.defaults = {
@@ -26,11 +27,18 @@ SP.defaults = {
     fadeOthers = false,
     otherAlpha = 0.6,
     bossScale = 1.3,
+    -- Pile bars: a panel listing each collapsed pile as a bar with its count
+    pileBars = true,
+    pileBarsLocked = true,
+    pileBarsMax = 8,
+    pileBarsScale = 1,
+    pileBarsX = nil, -- saved panel position (screen offset from bottom-left); nil = default
+    pileBarsY = nil,
     -- Minimap button (Reset to defaults leaves these alone)
     minimapButton = true,
     minimapAngle = 225, -- degrees around the minimap, 0 = right
 }
-local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true }
+local KEEP_ON_RESET = { minimapButton = true, minimapAngle = true, pileBarsX = true, pileBarsY = true }
 
 local CHOICES = {
     stackMode = { "spread", "collapse" },
@@ -76,6 +84,9 @@ local function LoadSettings()
 end
 
 function SP.Get(key) return db[key] end
+
+-- False until this character's settings have loaded (ADDON_LOADED).
+function SP.Ready() return db ~= nil end
 
 function SP.Set(key, value)
     db[key] = value
@@ -246,6 +257,7 @@ function SP.RestyleAll()
         if data.style and data.style.sp then data.style.sp.layoutDone = false end
     end
     if SP.UpdateMinimapButton then SP.UpdateMinimapButton() end
+    if SP.UpdatePileBars then SP.UpdatePileBars() end
     if SP.RefreshOptions then SP.RefreshOptions() end
 end
 
@@ -373,7 +385,18 @@ local function ComputePiles(n, share)
                 lastSeen[e.plate] = now
                 if e ~= shown then pileHidden[e.plate] = true end
             end
-            if count > 1 then pileCount[shown.plate] = count end
+            if count > 1 then
+                pileCount[shown.plate] = count
+                -- For the pile bars: the pile's average health, read off each member's bar.
+                local sum = 0
+                for k = 1, count do
+                    local bar = plates[pile.live[k].plate].bar
+                    local low, high = bar:GetMinMaxValues()
+                    if high and low and high > low then sum = sum + ((bar:GetValue() or low) - low) / (high - low) end
+                end
+                table.insert(SP.pileList, { name = shown.name or "?", count = count, health = sum / count,
+                    target = IsTarget(shown.plate, plates[shown.plate]) })
+            end
         end
         for k = 1, table.getn(pile.ghosts) do table.insert(list, pile.ghosts[k]) end
         if list[1] then order[list[1]] = list end
@@ -382,6 +405,7 @@ end
 
 local lastMode
 local function ComputeCollapse()
+    SP.pileList = {}
     for _, t in ipairs({ pileHidden, pileCount }) do
         for k in pairs(t) do t[k] = nil end
     end
@@ -516,6 +540,7 @@ events:SetScript("OnEvent", function()
         LoadSettings()
         Install()
         SP.UpdateMinimapButton()
+        SP.UpdatePileBars()
     elseif event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
         if not db then LoadSettings() end
         if not Install() and not warned then

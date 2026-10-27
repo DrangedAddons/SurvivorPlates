@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+- **Pile bars.** In Collapse piles mode, a panel lists each pile as its own bar, like boss bars: the mob's name, how many are in the pile (gold "x12") and the pile's average health. Biggest piles first.
+  - Click a bar to target the nearest mob with that name.
+  - The pile holding your target gets a gold edge.
+  - Untick **Lock pile bars** to move the panel: drag it by the panel or its title strip, then tick it again. The position is kept per character and survives Reset to defaults.
+  - Settings: **Show pile bars** (on by default), **Most pile bars** (default 8) and **Pile bars scale**.
+
 ## 0.5.0
 - **Stack in columns is gone for now.** It was too jumpy and messy. Mode is **Spread** (the game's own layout, the default) or **Collapse piles**. Characters that were on Stack are back on Spread.
 - Its settings went with it: Gap between plates, Leave a column beyond, Most plates in a column, Movement speed, Keep stacks on screen, Click area follows the plate and Plates stay in their column.

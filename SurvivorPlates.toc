@@ -2,10 +2,11 @@
 ## Title: SurvivorPlates
 ## Notes: Collapse piles of mobs into one nameplate, plus size and target options for SurvivorsDragonUi.
 ## Author: Dranged
-## Version: 0.5.0
+## Version: 0.6.0
 ## Dependencies: SurvivorsDragonUi
 ## SavedVariables: SurvivorPlatesDB
 
 Core.lua
 Options.lua
 Minimap.lua
+Piles.lua
