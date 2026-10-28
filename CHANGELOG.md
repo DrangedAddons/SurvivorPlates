@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.18.3
+- **Pile bars have a solid black backing** instead of a see-through one, so the health, damage chunks, boss breakdown and contribution strip stand out instead of washing out over the game. The boss breakdown segments are fully opaque too.
+
 ## 0.18.2
 - **Party pets get their owner's class colour.** The game reports a party pet's hits under its kind ("Wolf hits ...") and doesn't expose it as a unit, so its damage had no colour. It's now credited to the party member whose class has that pet: demons to the warlock, other pets to the hunter (when there's only one of that class).
 - `/asp combatlog` no longer lists debuff lines ("is afflicted by Ignite") as not understood.

@@ -271,7 +271,7 @@ local function DrawBreakdown(b, p)
                 seg:SetWidth(w)
                 seg:SetTexCoord(x / inner, (x + w) / inner, 0, 1)
                 local c = parts[i].color or CHUNK_COLOR
-                seg:SetVertexColor(c[1], c[2], c[3], 0.85)
+                seg:SetVertexColor(c[1], c[2], c[3], 1)
                 seg:Show()
                 x = x + w
             end
@@ -299,7 +299,7 @@ local function Bar(i)
     b:RegisterForClicks("LeftButtonUp")
     local bg = b:CreateTexture(nil, "BACKGROUND")
     bg:SetTexture("Interface\\Buttons\\WHITE8X8")
-    bg:SetVertexColor(0, 0, 0, 0.8)
+    bg:SetVertexColor(0, 0, 0, 1) -- solid, so the colours on the bar don't wash out over the game
     bg:SetAllPoints(b)
     local lag = CreateFrame("StatusBar", nil, b)
     lag:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1)
@@ -355,7 +355,7 @@ local function Bar(i)
     strip:SetHeight(STRIP_H)
     local stripBg = strip:CreateTexture(nil, "BACKGROUND")
     stripBg:SetTexture("Interface\\Buttons\\WHITE8X8")
-    stripBg:SetVertexColor(0, 0, 0, 0.7)
+    stripBg:SetVertexColor(0, 0, 0, 1)
     stripBg:SetAllPoints(strip)
     strip:Hide()
     b.strip, b.stripSegs = strip, {}
