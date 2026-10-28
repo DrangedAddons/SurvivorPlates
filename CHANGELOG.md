@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.1
+- **Coop class colours:** a coop partner's class now also comes from the game's own coop list, since the game may not make them a WoW party member. Before, their hits could only get a colour if they were in your WoW party.
+- `/asp combatlog` reports more: who other than you was seen hitting things (and whether their class was found), your WoW party, the game's coop list with each player's class, and up to 5 combat lines it couldn't read.
+
 ## 0.18.0
 - **Pile bars go by mob type.** Each bar counts every mob of that type on screen, piled or not: "Gurubashi Scout x23". A scout that wanders off from its pile still counts.
   - A type with only one mob on screen gets no bar (unless it's a boss or guardian, or the nameplates above mobs are hidden).

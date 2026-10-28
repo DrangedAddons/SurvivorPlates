@@ -63,17 +63,35 @@ local CLASS_COLOR = {
     MAGE = { 0.41, 0.8, 0.94 }, WARLOCK = { 0.58, 0.51, 0.79 }, DRUID = { 1, 0.49, 0.04 },
 }
 
--- A player or pet name -> its player's class colour and unit ("player", "party1", ...), from
--- you, your party and their pets. Unknown names get the plain chunk colour and no unit.
+-- The game's class ids, for a class given as a number.
+local CLASS_IDS = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", nil, "SHAMAN", "MAGE", "WARLOCK", nil, "DRUID" }
+
+local function ClassColor(class)
+    if type(class) == "number" then class = CLASS_IDS[class] end
+    if type(class) ~= "string" then return nil end
+    class = string.upper((string.gsub(class, "%s", "")))
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    if c then return { c.r, c.g, c.b } end
+    return CLASS_COLOR[class]
+end
+
+-- A player or pet name -> its player's class colour and a key for that player, from you,
+-- your party and their pets, then the game's own coop list (AZS_PARTY: name, class), since a
+-- coop partner may not be a WoW party member. Unknown names get the plain chunk colour and
+-- no key.
 local UNITS = { "player", "party1", "party2", "party3", "party4" }
 local PETS = { "pet", "partypet1", "partypet2", "partypet3", "partypet4" }
 local function ColorOf(name)
     for i = 1, 5 do
         if UnitName(UNITS[i]) == name or (UnitExists(PETS[i]) and UnitName(PETS[i]) == name) then
             local _, class = UnitClass(UNITS[i])
-            local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class or ""]
-            if c then return { c.r, c.g, c.b }, UNITS[i] end
-            return CLASS_COLOR[class or ""] or CHUNK_COLOR, UNITS[i]
+            return ClassColor(class) or CHUNK_COLOR, UnitName(UNITS[i])
+        end
+    end
+    if type(AZS_PARTY) == "table" then
+        for i = 1, table.getn(AZS_PARTY) do
+            local p = AZS_PARTY[i]
+            if p.name == name then return ClassColor(p.class) or CHUNK_COLOR, p.name end
         end
     end
     return CHUNK_COLOR
@@ -646,6 +664,9 @@ local function BuildPatterns()
     end
 end
 
+-- For /asp combatlog: lines no pattern understood, and who else was seen hitting things.
+local unparsed, others = {}, {}
+
 local function OnHit(message)
     if not patterns then BuildPatterns() end
     for i = 1, table.getn(patterns) do
@@ -664,6 +685,7 @@ local function OnHit(message)
                 end
             end
             if p.you then source = UnitName("player") end
+            if source and source ~= UnitName("player") then others[source] = (others[source] or 0) + 1 end
             if source and target and amount then
                 local now = GetTime()
                 local rec = hitsOn[target]
@@ -679,6 +701,7 @@ local function OnHit(message)
             return
         end
     end
+    if table.getn(unparsed) < 5 then table.insert(unparsed, message) end
 end
 
 local DAMAGE_EVENTS = {
@@ -710,6 +733,8 @@ function SP.ToggleCombatLog()
     recording = not recording
     if recording then
         for k in pairs(seen) do seen[k] = nil end
+        for k in pairs(others) do others[k] = nil end
+        for i = table.getn(unparsed), 1, -1 do table.remove(unparsed, i) end
         SP.Print("recording combat log events. Fight for a bit (in coop, let your partner hit things), then /asp combatlog again.")
         return
     end
@@ -723,4 +748,24 @@ function SP.ToggleCombatLog()
         end
     end
     if not any then SP.Print("none.") end
+    local who = ""
+    for name, n in pairs(others) do
+        local _, key = ColorOf(name)
+        who = who .. " " .. name .. " x" .. n .. (key and "" or " (no class found)")
+    end
+    SP.Print("hits by someone other than you:" .. (who ~= "" and who or " none"))
+    local party = ""
+    for i = 1, 4 do
+        if UnitExists("party" .. i) then party = party .. " " .. (UnitName("party" .. i) or "?") end
+    end
+    SP.Print("WoW party:" .. (party ~= "" and party or " none"))
+    local coop = ""
+    if type(AZS_PARTY) == "table" then
+        for i = 1, table.getn(AZS_PARTY) do
+            local p = AZS_PARTY[i]
+            coop = coop .. " " .. tostring(p.name) .. " (" .. tostring(p.class) .. ")"
+        end
+    end
+    SP.Print("game's coop list:" .. (coop ~= "" and coop or " none"))
+    for i = 1, table.getn(unparsed) do SP.Print("not understood: " .. unparsed[i]) end
 end
