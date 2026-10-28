@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.2
+- **Party pets get their owner's class colour.** The game reports a party pet's hits under its kind ("Wolf hits ...") and doesn't expose it as a unit, so its damage had no colour. It's now credited to the party member whose class has that pet: demons to the warlock, other pets to the hunter (when there's only one of that class).
+- `/asp combatlog` no longer lists debuff lines ("is afflicted by Ignite") as not understood.
+- Known limit: in coop the game only sends addons your own hits and your party's pets' melee. Party members' own spells and attacks aren't in the combat log, so their contribution can't be shown per mob.
+
 ## 0.18.1
 - **Coop class colours:** a coop partner's class now also comes from the game's own coop list, since the game may not make them a WoW party member. Before, their hits could only get a colour if they were in your WoW party.
 - `/asp combatlog` reports more: who other than you was seen hitting things (and whether their class was found), your WoW party, the game's coop list with each player's class, and up to 5 combat lines it couldn't read.

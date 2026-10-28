@@ -667,7 +667,28 @@ end
 -- For /asp combatlog: lines no pattern understood, and who else was seen hitting things.
 local unparsed, others = {}, {}
 
-local function OnHit(message)
+-- The game doesn't expose party pets as units, and names them by kind ("Wolf"). A party hit
+-- from a name that isn't a player is a pet: credit it to the one party member whose class
+-- has that kind of pet. Demons are warlock pets; anything else is taken as a hunter's.
+local DEMONS = { Imp = true, Voidwalker = true, Succubus = true, Felhunter = true, Felguard = true,
+    Infernal = true, Doomguard = true }
+local function PetOwner(name)
+    local want = DEMONS[name] and "WARLOCK" or "HUNTER"
+    local owner
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists(unit) then
+            local _, class = UnitClass(unit)
+            if class == want then
+                if owner then return nil end -- two of that class: can't tell whose
+                owner = UnitName(unit)
+            end
+        end
+    end
+    return owner
+end
+
+local function OnHit(message, ev)
     if not patterns then BuildPatterns() end
     for i = 1, table.getn(patterns) do
         local p = patterns[i]
@@ -685,6 +706,10 @@ local function OnHit(message)
                 end
             end
             if p.you then source = UnitName("player") end
+            if source and ev and string.find(ev, "PARTY") then
+                local _, known = ColorOf(source)
+                if not known then source = PetOwner(source) or source end
+            end
             if source and source ~= UnitName("player") then others[source] = (others[source] or 0) + 1 end
             if source and target and amount then
                 local now = GetTime()
@@ -701,7 +726,8 @@ local function OnHit(message)
             return
         end
     end
-    if table.getn(unparsed) < 5 then table.insert(unparsed, message) end
+    -- Only lines with a number in them: "is afflicted by Ignite" is a debuff, not damage.
+    if table.getn(unparsed) < 5 and string.find(message, "%d") then table.insert(unparsed, message) end
 end
 
 local DAMAGE_EVENTS = {
@@ -717,7 +743,7 @@ for i = 1, table.getn(DAMAGE_EVENTS) do hits:RegisterEvent(DAMAGE_EVENTS[i]) end
 -- check whether your coop partner's hits come through.
 local seen, recording = {}, false
 hits:SetScript("OnEvent", function()
-    if arg1 then OnHit(arg1) end
+    if arg1 then OnHit(arg1, event) end
     if recording then
         local s = seen[event]
         if not s then
